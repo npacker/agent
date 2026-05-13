@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "declaration": true,
+    "noImplicitOverride": true,
+    "sourceMap": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "rootDir": "src",
+    "outDir": "dist"
+  }
+}
