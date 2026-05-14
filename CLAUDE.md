@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-LM Studio plugin that exposes a single **Run Agent** tool to local LLMs, built on `@lmstudio/sdk`. The tool delegates a self-contained task to a sub-agent LLM running inside the same LM Studio instance and returns the sub-agent's final answer to the host model. The host LLM treats `Run Agent` like any other tool call; the sub-agent runs with a fresh context window seeded only by the configured system prompt and the caller-supplied `task` / `context`.
+LM Studio plugin that exposes a single **Run Agent** tool to local LLMs, built on `@lmstudio/sdk`. The tool delegates a self-contained task to a sub-agent LLM running inside the same LM Studio instance and returns the sub-agent's final answer to the host model. The host LLM treats `Run Agent` like any other tool call; the sub-agent runs with a fresh context window seeded only by the caller-supplied `systemPrompt` and `task`.
 
 ## Commands
 
@@ -23,7 +23,7 @@ Entry point [src/index.ts](src/index.ts) registers a config schematic and a tool
 ### Request flow
 
 1. **Tool invocation** — [src/tools-provider.ts](src/tools-provider.ts) registers the Zod-validated `createRunAgentTool`. Per-call config resolves via `resolveConfig` in [src/config/resolve-config.ts](src/config/resolve-config.ts), reading plugin UI settings from [src/config/config-schematics.ts](src/config/config-schematics.ts).
-2. **Agent run** — [src/agent/run-agent.ts](src/agent/run-agent.ts) is the meat: it pulls an LLM handle off `ctl.client.llm.model(modelKey)` (or `.model()` for any loaded model when the key is `"auto"`), builds a `Chat` from the system prompt plus the task, and dispatches `model.act(chat, externalTools, opts)` with `maxPredictionRounds`, `temperature`, and a composite abort signal. The sub-agent has no synthetic tools of its own; `externalTools` is whatever cross-plugin tool list the caller passed in. `.act` runs its native round loop — the SDK dispatches any tool calls and feeds results back automatically; the loop terminates when the model emits an assistant message with no tool call (or when `maxPredictionRounds` is reached). Assistant messages are accumulated via the `onMessage` callback, and the text content of the last non-empty assistant message is returned to the host.
+2. **Agent run** — [src/agent/run-agent.ts](src/agent/run-agent.ts) is the meat: it pulls an LLM handle off `ctl.client.llm.model(modelKey)` (or `.model()` for any loaded model when the key is `"auto"`), builds a `Chat` from the caller-supplied system prompt plus the task, and dispatches `model.act(chat, externalTools, opts)` with `maxPredictionRounds`, `temperature`, and a composite abort signal. The sub-agent has no synthetic tools of its own; `externalTools` is whatever cross-plugin tool list the caller passed in. `.act` runs its native round loop — the SDK dispatches any tool calls and feeds results back automatically; the loop terminates when the model emits an assistant message with no tool call (or when `maxPredictionRounds` is reached). Assistant messages are accumulated via the `onMessage` callback, and the text content of the last non-empty assistant message is returned to the host.
 3. **Cancellation** — `composeSignals` merges the SDK-supplied `context.signal` with a mandatory wall-clock timeout (`timeoutSeconds` plugin field, minimum 30s) via `AbortSignal.any`. A timeout aborts the underlying `.act` and is reported back as an `AgentTimeoutError`; caller-driven cancellation is reported as a standard abort. Timeout attribution reads `timeoutSignal.aborted` directly.
 4. **Errors** — `formatToolError` in [src/errors/tool-error.ts](src/errors/tool-error.ts) converts thrown errors into user-facing strings. The agent-specific errors `AgentTimeoutError` and `EmptyAgentResponseError` live in [src/errors/agent-error.ts](src/errors/agent-error.ts); abort detection via `DOMException.name === "AbortError"` is shared with the other plugins in this workspace.
 
@@ -32,7 +32,6 @@ Entry point [src/index.ts](src/index.ts) registers a config schematic and a tool
 [src/config/config-schematics.ts](src/config/config-schematics.ts) declares the plugin UI fields:
 
 - `modelKey` — model key (as listed in `lms ls`) of the LLM to run as the sub-agent. The `"auto"` sentinel from [src/config/auto-sentinel.ts](src/config/auto-sentinel.ts) routes through `client.llm.model()` (no argument), which picks any model already loaded in LM Studio.
-- `systemPrompt` — standing instructions injected as the system message on every run. The built-in default tells the sub-agent to answer concisely and skip preamble.
 - `maxRounds` — upper bound passed straight through as `maxPredictionRounds`. When no external tools are supplied this typically resolves to one round; with tools, the cap is honoured across the SDK's natural round loop.
 - `temperature` — sampling temperature passed through `LLMPredictionConfigInput`.
 - `timeoutSeconds` — wall-clock cap, in seconds (30 to 1800). Composed with the SDK-supplied signal via `AbortSignal.any`; a timeout abort is reported as `AgentTimeoutError`.

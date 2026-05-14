@@ -23,8 +23,14 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
   return tool({
     name: "Run Agent",
     description:
-      "Delegate a task to a sub-agent LLM running in LM Studio and return its final answer. Suitable for self-contained reasoning, summarisation, drafting, or multi-step work. Pass `allowedTools` to scope which cross-plugin tools it may call. The sub-agent has no access to this chat's history.",
+      "Delegate a task to a sub-agent LLM running in LM Studio and return its final answer. Suitable for self-contained reasoning, summarisation, drafting, or multi-step work. Supply the sub-agent's system prompt yourself, tailored to the user's query. Pass `allowedTools` to scope which cross-plugin tools it may call. The sub-agent has no access to this chat's history.",
     parameters: {
+      systemPrompt: z
+        .string()
+        .min(1)
+        .describe(
+          "System prompt for the sub-agent, written by you to fit the user's query. State the persona, output style, and any standing constraints. The sub-agent has no prior context, so any background it needs must be included here or in the task."
+        ),
       task: z
         .string()
         .min(1)
@@ -60,7 +66,7 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
 
         const answer = await runAgent(ctl.client, {
           modelKey: config.modelKey,
-          systemPrompt: config.systemPrompt,
+          systemPrompt: arguments_.systemPrompt,
           task: arguments_.task,
           externalTools,
           maxRounds: config.maxRounds,

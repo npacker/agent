@@ -3,7 +3,7 @@
  */
 
 import { AUTO_CONFIG_VALUE } from "./auto-sentinel"
-import { configSchematics, DEFAULT_SYSTEM_PROMPT } from "./config-schematics"
+import { configSchematics } from "./config-schematics"
 
 import type { ToolsProviderController } from "@lmstudio/sdk"
 
@@ -18,8 +18,6 @@ const MS_PER_SECOND = 1000
 export interface ResolvedConfig {
   /** Model key of the LLM to run as the sub-agent. `undefined` selects any loaded model. */
   modelKey: string | undefined
-  /** System prompt injected as the first message on the agent run. */
-  systemPrompt: string
   /** Upper bound on the number of `.act` prediction rounds the run may take. */
   maxRounds: number
   /** Plugin identifiers whose tools the sub-agent may call. Empty disables cross-plugin tools. */
@@ -43,7 +41,6 @@ export function resolveConfig(ctl: ToolsProviderController): ResolvedConfig {
 
   return {
     modelKey: resolveModelKey(pluginConfig.get("modelKey")),
-    systemPrompt: resolveSystemPrompt(pluginConfig.get("systemPrompt")),
     maxRounds: pluginConfig.get("maxRounds"),
     toolSources: pluginConfig.get("toolSources"),
     defaultAllowedTools: pluginConfig.get("defaultAllowedTools"),
@@ -64,14 +61,4 @@ function resolveModelKey(pluginValue: string): string | undefined {
   }
 
   return pluginValue
-}
-
-/**
- * Resolve a configured system prompt, falling back to a built-in default when blank.
- *
- * @param pluginValue - Value read from plugin configuration.
- * @returns The system prompt to inject on every agent run.
- */
-function resolveSystemPrompt(pluginValue: string): string {
-  return pluginValue.trim() === "" ? DEFAULT_SYSTEM_PROMPT : pluginValue
 }

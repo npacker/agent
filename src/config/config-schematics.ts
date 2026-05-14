@@ -3,13 +3,6 @@ import { createConfigSchematics } from "@lmstudio/sdk"
 import { AUTO_CONFIG_VALUE } from "./auto-sentinel"
 
 /**
- * Default system prompt used when the user has not supplied one. Re-used by
- * `resolveSystemPrompt` so a blank field falls back to the same string the UI shows.
- */
-export const DEFAULT_SYSTEM_PROMPT =
-  "You are a focused sub-agent invoked by another LLM to complete a single, well-scoped task. Respond with the final answer only — no preamble, no recap of the task, no meta-commentary. If the task cannot be completed, return a brief explanation of why."
-
-/**
  * Plugin configuration schematics registered with LM Studio.
  * Exposes the settings shown in the plugin UI.
  */
@@ -23,16 +16,6 @@ export const configSchematics = createConfigSchematics()
         "Model key of the LLM to run as the sub-agent (as listed in `lms ls`). Leave as 'auto' to use any model already loaded in LM Studio.",
     },
     AUTO_CONFIG_VALUE
-  )
-  .field(
-    "systemPrompt",
-    "string",
-    {
-      displayName: "Agent System Prompt",
-      subtitle:
-        "Persona and standing instructions injected as the system message on every agent run. The caller's task is appended as a user message.",
-    },
-    DEFAULT_SYSTEM_PROMPT
   )
   .field(
     "maxRounds",
