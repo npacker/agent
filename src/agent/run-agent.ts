@@ -7,16 +7,6 @@ import { Chat, type ChatMessage, type LMStudioClient, type Tool } from "@lmstudi
 import { AgentTimeoutError, EmptyAgentResponseError } from "../errors/agent-error"
 import { isAbortError } from "../errors/inspect-error"
 
-import { prepareFinalAnswerCapture, type FinalAnswerSetup } from "./final-answer"
-
-/** System-prompt suffix telling the model how to terminate the run. */
-const SUBMIT_FINAL_ANSWER_HINT =
-  "\n\nWhen you have completed the task, call the `submit_final_answer` tool with your answer; the run will terminate as soon as you do."
-
-/** System-prompt suffix appended when a plan is supplied. */
-const PLAN_ADHERENCE_HINT =
-  "\n\nA plan has been supplied as a user message starting with `Plan:`. Follow it step by step. If your next action would contradict the plan, emit the word `replan` so the caller can intervene."
-
 /**
  * Options driving a single sub-agent run.
  */
@@ -27,10 +17,6 @@ export interface RunAgentOptions {
   systemPrompt: string
   /** Task description appended as the user message. */
   task: string
-  /** Optional extra context appended to the task as a trailing user message. */
-  context: string | undefined
-  /** Optional caller-supplied plan injected after the task as its own user message. */
-  plan: string | undefined
   /** Cross-plugin tools (already filtered) the sub-agent may call. */
   externalTools: Tool[]
   /** Upper bound on the number of `.act` prediction rounds the run may take. */
@@ -68,16 +54,14 @@ interface RunSignals {
 export async function runAgent(client: LMStudioClient, options: RunAgentOptions): Promise<string> {
   const model = options.modelKey === undefined ? await client.llm.model() : await client.llm.model(options.modelKey)
   const signals = composeSignals(options)
-  const finalAnswer = prepareFinalAnswerCapture(signals.runSignal)
-  const tools = [finalAnswer.tool, ...options.externalTools]
   const chat = buildChat(options)
   const transcript: ChatMessage[] = []
 
   try {
-    await model.act(chat, tools, {
+    await model.act(chat, options.externalTools, {
       maxPredictionRounds: options.maxRounds,
       temperature: options.temperature,
-      signal: finalAnswer.actSignal,
+      signal: signals.runSignal,
 
       /**
        * Surface round transitions in the host UI status line.
@@ -98,11 +82,11 @@ export async function runAgent(client: LMStudioClient, options: RunAgentOptions)
       },
     })
   } catch (error) {
-    return mapDispatchError(error, finalAnswer, signals, options)
-  }
+    if (isAbortError(error) && signals.didTimeout()) {
+      throw new AgentTimeoutError(options.timeoutMs)
+    }
 
-  if (finalAnswer.capture.value !== undefined) {
-    return finalAnswer.capture.value
+    throw error
   }
 
   const answer = lastAssistantText(transcript)
@@ -137,70 +121,16 @@ function composeSignals(options: RunAgentOptions): RunSignals {
 }
 
 /**
- * Disambiguate a caught `.act` rejection. A `submit_final_answer` abort becomes a clean return
- * with the captured answer; a timeout abort becomes a typed `AgentTimeoutError`; everything else
- * propagates unchanged. A captured final answer wins over the timeout so user-submitted answers
- * are never silently discarded by a near-simultaneous timeout.
- *
- * @param error - Caught rejection value.
- * @param finalAnswer - Capture bundle for the run.
- * @param signals - Composed run-wide and timeout signals.
- * @param options - Run options (consulted for the caller signal and configured timeout).
- * @returns The captured final answer when the abort was caused by `submit_final_answer`.
- * @throws AgentTimeoutError When the timeout signal fired and no answer was captured.
- * @throws Error When the rejection is anything else.
- */
-function mapDispatchError(
-  error: unknown,
-  finalAnswer: FinalAnswerSetup,
-  signals: RunSignals,
-  options: RunAgentOptions
-): string {
-  if (!isAbortError(error)) {
-    throw error
-  }
-
-  if (finalAnswer.capture.value !== undefined) {
-    return finalAnswer.capture.value
-  }
-
-  if (signals.didTimeout()) {
-    throw new AgentTimeoutError(options.timeoutMs)
-  }
-
-  throw error
-}
-
-/**
- * Build the chat fed to `.act`: system prompt (extended with submit-final-answer plus optional
- * plan-adherence hints), task, optional plan, optional context.
+ * Build the chat fed to `.act`: system prompt and task.
  *
  * @param options - Run options.
  * @returns A `Chat` ready to pass to `model.act`.
  */
 function buildChat(options: RunAgentOptions): Chat {
-  let { systemPrompt } = options
-
-  if (options.plan !== undefined) {
-    systemPrompt += PLAN_ADHERENCE_HINT
-  }
-
-  systemPrompt += SUBMIT_FINAL_ANSWER_HINT
-
-  const chat = Chat.from([
-    { role: "system", content: systemPrompt },
+  return Chat.from([
+    { role: "system", content: options.systemPrompt },
     { role: "user", content: options.task },
   ])
-
-  if (options.plan !== undefined) {
-    chat.append("user", `Plan:\n${options.plan}`)
-  }
-
-  if (options.context !== undefined && options.context.trim() !== "") {
-    chat.append("user", options.context)
-  }
-
-  return chat
 }
 
 /**

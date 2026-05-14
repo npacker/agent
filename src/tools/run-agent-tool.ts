@@ -12,8 +12,8 @@ import { formatToolError } from "../errors"
 import type { ToolBridge } from "../plugin-tools"
 
 /**
- * Build the Run Agent tool: delegates a task to a sub-agent model with optional plan and the
- * cross-plugin tools exposed by the bridge.
+ * Build the Run Agent tool: delegates a task to a sub-agent model with the cross-plugin tools
+ * exposed by the bridge.
  *
  * @param ctl - Tools provider controller supplied by the LM Studio SDK.
  * @param bridge - Long-lived bridge exposing cross-plugin tools to the sub-agent.
@@ -23,25 +23,13 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
   return tool({
     name: "Run Agent",
     description:
-      "Delegate a task to a sub-agent LLM running in LM Studio and return its final answer. Suitable for self-contained reasoning, summarisation, drafting, or multi-step work driven by a plan. Pass `plan` to give the sub-agent a procedure to follow; pass `allowedTools` to scope which cross-plugin tools it may call. The sub-agent has no access to this chat's history.",
+      "Delegate a task to a sub-agent LLM running in LM Studio and return its final answer. Suitable for self-contained reasoning, summarisation, drafting, or multi-step work. Pass `allowedTools` to scope which cross-plugin tools it may call. The sub-agent has no access to this chat's history.",
     parameters: {
       task: z
         .string()
         .min(1)
         .describe(
-          "The task for the sub-agent to complete. State the goal, the required output shape, and any constraints. Do not refer to 'the chat' or 'the user' — the sub-agent has no prior context."
-        ),
-      context: z
-        .string()
-        .optional()
-        .describe(
-          "Optional supplemental context (source material, prior findings, constraints) appended as a trailing user message. Include anything the sub-agent needs that is not already in the task description."
-        ),
-      plan: z
-        .string()
-        .optional()
-        .describe(
-          "Optional step-by-step plan injected as a user message after the task. Supply this when the task needs multi-step execution; the system prompt is augmented to nudge the sub-agent to follow it."
+          "The task for the sub-agent to complete. State the goal, the required output shape, any constraints, and inline any source material the sub-agent needs. Do not refer to 'the chat' or 'the user' — the sub-agent has no prior context."
         ),
       allowedTools: z
         .array(z.string())
@@ -74,8 +62,6 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
           modelKey: config.modelKey,
           systemPrompt: config.systemPrompt,
           task: arguments_.task,
-          context: arguments_.context,
-          plan: arguments_.plan,
           externalTools,
           maxRounds: config.maxRounds,
           temperature: config.temperature,
