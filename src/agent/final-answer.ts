@@ -41,7 +41,7 @@ export function prepareFinalAnswerCapture(runSignal: AbortSignal): FinalAnswerSe
   const capture: FinalAnswerCapture = { value: undefined }
   const actSignal: AbortSignal = AbortSignal.any([runSignal, controller.signal])
 
-  const finalTool = tool({
+  const finalAnswerTool = tool({
     name: "submit_final_answer",
     description:
       "Submit the run's final answer and end the agent run. Call this only when you have completed the task — its argument becomes the value returned to the caller, and the run terminates immediately afterwards.",
@@ -63,5 +63,5 @@ export function prepareFinalAnswerCapture(runSignal: AbortSignal): FinalAnswerSe
     },
   })
 
-  return { capture, tool: finalTool, actSignal }
+  return { capture, tool: finalAnswerTool, actSignal }
 }

@@ -2,7 +2,7 @@
  * Drive one `model.act()` call for a sub-agent and return its final answer.
  */
 
-import { Chat, type ChatMessage, type LLM, type LMStudioClient, type Tool } from "@lmstudio/sdk"
+import { Chat, type ChatMessage, type LMStudioClient, type Tool } from "@lmstudio/sdk"
 
 import { AgentTimeoutError, EmptyAgentResponseError } from "../errors/agent-error"
 import { isAbortError } from "../errors/inspect-error"
@@ -69,10 +69,34 @@ export async function runAgent(client: LMStudioClient, options: RunAgentOptions)
   const model = options.modelKey === undefined ? await client.llm.model() : await client.llm.model(options.modelKey)
   const signals = composeSignals(options)
   const finalAnswer = prepareFinalAnswerCapture(signals.runSignal)
+  const tools = [finalAnswer.tool, ...options.externalTools]
+  const chat = buildChat(options)
   const transcript: ChatMessage[] = []
 
   try {
-    await dispatchAct(model, options, finalAnswer, transcript)
+    await model.act(chat, tools, {
+      maxPredictionRounds: options.maxRounds,
+      temperature: options.temperature,
+      signal: finalAnswer.actSignal,
+
+      /**
+       * Surface round transitions in the host UI status line.
+       *
+       * @param roundIndex - Zero-based index of the round that just started.
+       */
+      onRoundStart: roundIndex => {
+        options.onStatus(`Agent round ${(roundIndex + 1).toString()}/${options.maxRounds.toString()}...`)
+      },
+
+      /**
+       * Accumulate every message emitted during the run so the final answer can be extracted.
+       *
+       * @param message - Message emitted by the SDK (assistant prediction or tool turn).
+       */
+      onMessage: message => {
+        transcript.push(message)
+      },
+    })
   } catch (error) {
     return mapDispatchError(error, finalAnswer, signals, options)
   }
@@ -110,49 +134,6 @@ function composeSignals(options: RunAgentOptions): RunSignals {
      */
     didTimeout: () => timeoutSignal.aborted,
   }
-}
-
-/**
- * Build the chat and tool list, then run one `model.act()` call. Lets `.act` rejections
- * propagate so the caller can sort them by source.
- *
- * @param model - Loaded model handle.
- * @param options - Run options.
- * @param finalAnswer - Capture bundle carrying the act signal and synthetic tool.
- * @param transcript - Mutable array that accumulates messages emitted during the run.
- */
-async function dispatchAct(
-  model: LLM,
-  options: RunAgentOptions,
-  finalAnswer: FinalAnswerSetup,
-  transcript: ChatMessage[]
-): Promise<void> {
-  const chat = buildChat(options)
-  const tools = [finalAnswer.tool, ...options.externalTools]
-
-  await model.act(chat, tools, {
-    maxPredictionRounds: options.maxRounds,
-    temperature: options.temperature,
-    signal: finalAnswer.actSignal,
-
-    /**
-     * Surface round transitions in the host UI status line.
-     *
-     * @param roundIndex - Zero-based index of the round that just started.
-     */
-    onRoundStart: roundIndex => {
-      options.onStatus(`Agent round ${(roundIndex + 1).toString()}/${options.maxRounds.toString()}...`)
-    },
-
-    /**
-     * Accumulate every message emitted during the run so the final answer can be extracted.
-     *
-     * @param message - Message emitted by the SDK (assistant prediction or tool turn).
-     */
-    onMessage: message => {
-      transcript.push(message)
-    },
-  })
 }
 
 /**
