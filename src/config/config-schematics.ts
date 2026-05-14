@@ -3,6 +3,13 @@ import { createConfigSchematics } from "@lmstudio/sdk"
 import { AUTO_CONFIG_VALUE } from "./auto-sentinel"
 
 /**
+ * Default system prompt used when the user has not supplied one. Re-used by
+ * `resolveSystemPrompt` so a blank field falls back to the same string the UI shows.
+ */
+export const DEFAULT_SYSTEM_PROMPT =
+  "You are a focused sub-agent invoked by another LLM to complete a single, well-scoped task. Respond with the final answer only — no preamble, no recap of the task, no meta-commentary. If the task cannot be completed, return a brief explanation of why."
+
+/**
  * Plugin configuration schematics registered with LM Studio.
  * Exposes the settings shown in the plugin UI.
  */
@@ -25,7 +32,7 @@ export const configSchematics = createConfigSchematics()
       subtitle:
         "Persona and standing instructions injected as the system message on every agent run. The caller's task is appended as a user message.",
     },
-    "You are a focused sub-agent invoked by another LLM to complete a single, well-scoped task. Respond with the final answer only — no preamble, no recap of the task, no meta-commentary. If the task cannot be completed, return a brief explanation of why."
+    DEFAULT_SYSTEM_PROMPT
   )
   .field(
     "maxRounds",
@@ -33,17 +40,39 @@ export const configSchematics = createConfigSchematics()
     {
       displayName: "Max Prediction Rounds",
       subtitle:
-        "1 to 20. Upper bound on the number of `.act` prediction rounds the agent may take before the run is terminated.",
+        "1 to 40. Upper bound on the number of `.act` prediction rounds the agent may take before the run is terminated.",
       min: 1,
-      max: 20,
+      max: 40,
       int: true,
       slider: {
         step: 1,
         min: 1,
-        max: 20,
+        max: 40,
       },
     },
     8
+  )
+  .field(
+    "toolSources",
+    "stringArray",
+    {
+      displayName: "Tool Source Plugins",
+      subtitle:
+        "Plugin identifiers ('owner/name') whose tools the sub-agent may call. Empty list disables cross-plugin tools.",
+      allowEmptyStrings: false,
+    },
+    []
+  )
+  .field(
+    "defaultAllowedTools",
+    "stringArray",
+    {
+      displayName: "Default Allowed Tools",
+      subtitle:
+        "Exact tool names allowed when the caller does not supply 'allowedTools'. Empty list means all tools from configured sources are allowed.",
+      allowEmptyStrings: false,
+    },
+    []
   )
   .field(
     "temperature",
@@ -66,13 +95,13 @@ export const configSchematics = createConfigSchematics()
     "numeric",
     {
       displayName: "Run Timeout (seconds)",
-      subtitle: "0 to 1800. Hard wall-clock cap on a single agent run. Set to 0 to disable the timeout.",
-      min: 0,
+      subtitle: "30 to 1800. Hard wall-clock cap on a single agent run.",
+      min: 30,
       max: 1800,
       int: true,
       slider: {
         step: 30,
-        min: 0,
+        min: 30,
         max: 1800,
       },
     },

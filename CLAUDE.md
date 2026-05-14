@@ -24,7 +24,7 @@ Entry point [src/index.ts](src/index.ts) registers a config schematic and a tool
 
 1. **Tool invocation** — [src/tools-provider.ts](src/tools-provider.ts) registers the Zod-validated `createRunAgentTool`. Per-call config resolves via `resolveConfig` in [src/config/resolve-config.ts](src/config/resolve-config.ts), reading plugin UI settings from [src/config/config-schematics.ts](src/config/config-schematics.ts).
 2. **Agent run** — [src/agent/run-agent.ts](src/agent/run-agent.ts) is the meat: it pulls an LLM handle off `ctl.client.llm.model(modelKey)` (or `.model()` for any loaded model when the key is `"auto"`), builds a `Chat` from the system prompt plus the task (and optional context as a second user message), and dispatches `model.act(chat, [], opts)` with `maxPredictionRounds`, `temperature`, and a composite abort signal. The tool list is intentionally empty: the sub-agent has no nested tools today, so `.act` collapses to a single prediction round unless the model issues spurious tool requests. Assistant messages are accumulated via the `onMessage` callback, and the text content of the final assistant message is returned to the host.
-3. **Cancellation** — `combineSignals` merges the SDK-supplied `context.signal` with an optional wall-clock timeout (`timeoutSeconds` plugin field, `0` to disable). A timeout aborts the underlying `.act` and is reported back as an `AgentTimeoutError`; caller-driven cancellation is reported as a standard abort. The combined signal is torn down in a `finally` block to avoid leaking timers.
+3. **Cancellation** — `composeSignals` merges the SDK-supplied `context.signal` with a mandatory wall-clock timeout (`timeoutSeconds` plugin field, minimum 30s) via `AbortSignal.any`. A timeout aborts the underlying `.act` and is reported back as an `AgentTimeoutError`; caller-driven cancellation is reported as a standard abort. Timeout attribution reads `timeoutSignal.aborted` directly.
 4. **Errors** — `formatToolError` in [src/errors/tool-error.ts](src/errors/tool-error.ts) converts thrown errors into user-facing strings. The agent-specific errors `AgentTimeoutError` and `EmptyAgentResponseError` live in [src/errors/agent-error.ts](src/errors/agent-error.ts); abort detection via `DOMException.name === "AbortError"` is shared with the other plugins in this workspace.
 
 ### Configuration
@@ -35,7 +35,7 @@ Entry point [src/index.ts](src/index.ts) registers a config schematic and a tool
 - `systemPrompt` — standing instructions injected as the system message on every run. The built-in default tells the sub-agent to answer concisely and skip preamble.
 - `maxRounds` — upper bound passed straight through as `maxPredictionRounds`. With no nested tools this typically resolves to one round, but the cap is honoured if the model emits tool requests anyway.
 - `temperature` — sampling temperature passed through `LLMPredictionConfigInput`.
-- `timeoutSeconds` — wall-clock cap, in seconds. `0` disables the timeout entirely; any positive value composes an `AbortController` with the SDK-supplied signal.
+- `timeoutSeconds` — wall-clock cap, in seconds (30 to 1800). Composed with the SDK-supplied signal via `AbortSignal.any`; a timeout abort is reported as `AgentTimeoutError`.
 
 ### Tool-file conventions
 

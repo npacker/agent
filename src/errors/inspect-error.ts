@@ -5,13 +5,15 @@
  */
 
 /**
- * Determine whether a thrown value represents an abort signal firing.
+ * Determine whether a thrown value represents an abort signal firing. Matches both the
+ * `DOMException` form thrown by `AbortSignal` and any other library that throws an `Error`
+ * whose `name` is `"AbortError"`.
  *
  * @param error - Thrown value to inspect.
- * @returns `true` when the value is a DOM abort error.
+ * @returns `true` when the value carries the conventional abort marker.
  */
 export function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError"
+  return error instanceof Error && error.name === "AbortError"
 }
 
 /**

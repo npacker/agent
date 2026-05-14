@@ -105,6 +105,7 @@ export default [
       "object-shorthand": "error",
       "no-lonely-if": "error",
       "no-nested-ternary": "error",
+      "unicorn/prefer-ternary": ["error", "always"],
       "no-unneeded-ternary": "error",
       "prefer-destructuring": ["error", { object: true, array: false }],
       "no-throw-literal": "off",
