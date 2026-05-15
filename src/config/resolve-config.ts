@@ -22,8 +22,8 @@ export interface ResolvedConfig {
   maxRounds: number
   /** Plugin identifiers whose tools the sub-agent may call. Empty disables cross-plugin tools. */
   toolSources: string[]
-  /** Default exact tool names allowed when the caller does not supply allowedTools. */
-  defaultAllowedTools: string[]
+  /** Exact tool names the sub-agent may call. Empty allows all tools from configured sources. */
+  allowedTools: string[]
   /** Sampling temperature applied to the agent's predictions. */
   temperature: number
   /** Wall-clock cap on the agent run, in milliseconds. Always positive. */
@@ -43,7 +43,7 @@ export function resolveConfig(ctl: ToolsProviderController): ResolvedConfig {
     modelKey: resolveModelKey(pluginConfig.get("modelKey")),
     maxRounds: pluginConfig.get("maxRounds"),
     toolSources: pluginConfig.get("toolSources"),
-    defaultAllowedTools: pluginConfig.get("defaultAllowedTools"),
+    allowedTools: pluginConfig.get("allowedTools"),
     temperature: pluginConfig.get("temperature"),
     timeoutMs: pluginConfig.get("timeoutSeconds") * MS_PER_SECOND,
   }

@@ -14,7 +14,6 @@ Delegate a single, well-scoped task to a sub-agent LLM and return its final answ
 | -------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `systemPrompt` | string   | Required. System prompt for the sub-agent — persona, output style, standing constraints. Tailor it to the user's query; the sub-agent has no prior context.                       |
 | `task`         | string   | Required. The task for the sub-agent — goal, required output shape, constraints. The sub-agent has no prior context; do not refer to "the chat" or "the user".                    |
-| `allowedTools` | string[] | Optional. Exact tool names the sub-agent may call this run. Omit to use the plugin's default allow list.                                                                          |
 
 Returns the sub-agent's final assistant message as a plain string. On failure returns a `"Error: …"` string the host model can read.
 

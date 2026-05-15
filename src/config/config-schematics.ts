@@ -47,12 +47,12 @@ export const configSchematics = createConfigSchematics()
     []
   )
   .field(
-    "defaultAllowedTools",
+    "allowedTools",
     "stringArray",
     {
-      displayName: "Default Allowed Tools",
+      displayName: "Allowed Tools",
       subtitle:
-        "Exact tool names allowed when the caller does not supply 'allowedTools'. Empty list means all tools from configured sources are allowed.",
+        "Exact tool names the sub-agent may call. Empty list means all tools from configured sources are allowed.",
       allowEmptyStrings: false,
     },
     []

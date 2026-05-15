@@ -23,7 +23,7 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
   return tool({
     name: "Run Agent",
     description:
-      "Delegate a task to a sub-agent LLM running in LM Studio and return its final answer. Suitable for self-contained reasoning, summarisation, drafting, or multi-step work. Supply the sub-agent's system prompt yourself, tailored to the user's query. Pass `allowedTools` to scope which cross-plugin tools it may call. The sub-agent has no access to this chat's history.",
+      "Delegate a task to a sub-agent LLM running in LM Studio and return its final answer. Suitable for self-contained reasoning, summarisation, drafting, or multi-step work. Supply the sub-agent's system prompt yourself, tailored to the user's query. The sub-agent has no access to this chat's history. Cross-plugin tool access is governed by the plugin's configuration.",
     parameters: {
       systemPrompt: z
         .string()
@@ -36,12 +36,6 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
         .min(1)
         .describe(
           "The task for the sub-agent to complete. State the goal, the required output shape, any constraints, and inline any source material the sub-agent needs. Do not refer to 'the chat' or 'the user' — the sub-agent has no prior context."
-        ),
-      allowedTools: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "Optional list of exact tool names the sub-agent may call this run. Omit to use the plugin's default allow list."
         ),
     },
 
@@ -57,8 +51,7 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
 
       try {
         const config = resolveConfig(ctl)
-        const allowedTools = arguments_.allowedTools ?? config.defaultAllowedTools
-        const { tools: externalTools, warnings } = bridge.listTools(allowedTools)
+        const { tools: externalTools, warnings } = bridge.listTools(config.allowedTools)
 
         for (const warning of warnings) {
           context.warn(warning)
