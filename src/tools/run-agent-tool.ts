@@ -7,7 +7,7 @@ import { z } from "zod"
 
 import { runAgent } from "../agent"
 import { resolveConfig } from "../config/resolve-config"
-import { formatToolError } from "../errors"
+import { formatToolError, UnknownAllowedToolsError } from "../errors"
 
 import type { ToolBridge } from "../plugin-tools"
 
@@ -51,10 +51,15 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
 
       try {
         const config = resolveConfig(ctl)
-        const { tools: externalTools, warnings } = bridge.listTools(config.allowedTools)
 
-        for (const warning of warnings) {
-          context.warn(warning)
+        for (const openWarning of bridge.openWarnings) {
+          context.warn(openWarning)
+        }
+
+        const { tools: externalTools, unknownNames } = bridge.listTools(config.allowedTools)
+
+        if (unknownNames.length > 0) {
+          throw new UnknownAllowedToolsError(unknownNames, bridge.availableNames())
         }
 
         const answer = await runAgent(ctl.client, {

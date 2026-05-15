@@ -2,7 +2,7 @@
  * User-facing error formatting for tool invocations.
  */
 
-import { AgentTimeoutError, EmptyAgentResponseError } from "./agent-error"
+import { AgentTimeoutError, EmptyAgentResponseError, UnknownAllowedToolsError } from "./agent-error"
 import { errorMessage, isAbortError } from "./inspect-error"
 
 /**
@@ -25,7 +25,11 @@ export function formatToolError(error: unknown, context: ToolErrorContext): stri
     return "Agent run aborted by user."
   }
 
-  if (error instanceof AgentTimeoutError || error instanceof EmptyAgentResponseError) {
+  if (
+    error instanceof AgentTimeoutError ||
+    error instanceof EmptyAgentResponseError ||
+    error instanceof UnknownAllowedToolsError
+  ) {
     return `Error: ${error.message}`
   }
 
