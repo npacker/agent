@@ -7,7 +7,7 @@
  */
 export class AgentTimeoutError extends Error {
   /** Configured wall-clock timeout that elapsed, in milliseconds. */
-  public readonly timeoutMs: number
+  public readonly timeout: number
 
   /**
    * Construct an AgentTimeoutError for the supplied timeout.
@@ -17,7 +17,7 @@ export class AgentTimeoutError extends Error {
   public constructor(timeoutMs: number) {
     super(`Agent run exceeded the configured timeout of ${(timeoutMs / 1000).toString()}s.`)
     this.name = "AgentTimeoutError"
-    this.timeoutMs = timeoutMs
+    this.timeout = timeoutMs
   }
 }
 

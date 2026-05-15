@@ -64,7 +64,7 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
           externalTools,
           maxRounds: config.maxRounds,
           temperature: config.temperature,
-          timeoutMs: config.timeoutMs,
+          timeout: config.timeout,
           signal: context.signal,
           onStatus: context.status,
         })

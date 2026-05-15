@@ -2,7 +2,7 @@
  * Drive one `model.act()` call for a sub-agent and return its final answer.
  */
 
-import { Chat, type ChatMessage, type LMStudioClient, type Tool } from "@lmstudio/sdk"
+import { Chat, type LMStudioClient, type Tool } from "@lmstudio/sdk"
 
 import { AgentTimeoutError, EmptyAgentResponseError } from "../errors/agent-error"
 import { isAbortError } from "../errors/inspect-error"
@@ -24,22 +24,11 @@ export interface RunAgentOptions {
   /** Sampling temperature applied to the agent's predictions. */
   temperature: number
   /** Wall-clock cap on the run, in milliseconds. */
-  timeoutMs: number
+  timeout: number
   /** Abort signal supplied by the calling tool context. */
   signal: AbortSignal
   /** Status callback invoked at round boundaries to surface progress to the host UI. */
   onStatus: (message: string) => void
-}
-
-/**
- * Composed abort signals derived from the caller's options.
- */
-interface RunSignals {
-  /** Run-wide signal composing caller cancellation with the wall-clock timeout. */
-  runSignal: AbortSignal
-
-  /** Returns `true` once the configured wall-clock timeout has fired. */
-  didTimeout: () => boolean
 }
 
 /**
@@ -53,15 +42,17 @@ interface RunSignals {
  */
 export async function runAgent(client: LMStudioClient, options: RunAgentOptions): Promise<string> {
   const model = options.modelKey === undefined ? await client.llm.model() : await client.llm.model(options.modelKey)
-  const signals = composeSignals(options)
-  const chat = buildChat(options)
-  const transcript: ChatMessage[] = []
+  const timeoutSignal = AbortSignal.timeout(options.timeout)
+  const chat = Chat.from([
+    { role: "system", content: options.systemPrompt },
+    { role: "user", content: options.task },
+  ])
 
   try {
     await model.act(chat, options.externalTools, {
       maxPredictionRounds: options.maxRounds,
       temperature: options.temperature,
-      signal: signals.runSignal,
+      signal: AbortSignal.any([options.signal, timeoutSignal]),
 
       /**
        * Surface round transitions in the host UI status line.
@@ -78,80 +69,40 @@ export async function runAgent(client: LMStudioClient, options: RunAgentOptions)
        * @param message - Message emitted by the SDK (assistant prediction or tool turn).
        */
       onMessage: message => {
-        transcript.push(message)
+        chat.append(message)
       },
     })
   } catch (error) {
-    if (isAbortError(error) && signals.didTimeout()) {
-      throw new AgentTimeoutError(options.timeoutMs)
+    if (isAbortError(error) && timeoutSignal.aborted) {
+      throw new AgentTimeoutError(options.timeout)
     }
 
     throw error
   }
 
-  const answer = lastAssistantText(transcript)
-
-  if (answer === undefined) {
-    throw new EmptyAgentResponseError()
-  }
-
-  return answer
-}
-
-/**
- * Compose the run-wide and timeout abort signals from the caller's options.
- *
- * @param options - Run options carrying the caller signal and timeout configuration.
- * @returns The composed signals.
- */
-function composeSignals(options: RunAgentOptions): RunSignals {
-  const timeoutSignal = AbortSignal.timeout(options.timeoutMs)
-  const runSignal = AbortSignal.any([options.signal, timeoutSignal])
-
-  return {
-    runSignal,
-
-    /**
-     * Report whether the wall-clock timeout has fired.
-     *
-     * @returns `true` once `AbortSignal.timeout` has aborted.
-     */
-    didTimeout: () => timeoutSignal.aborted,
-  }
-}
-
-/**
- * Build the chat fed to `.act`: system prompt and task.
- *
- * @param options - Run options.
- * @returns A `Chat` ready to pass to `model.act`.
- */
-function buildChat(options: RunAgentOptions): Chat {
-  return Chat.from([
-    { role: "system", content: options.systemPrompt },
-    { role: "user", content: options.task },
-  ])
+  return lastAssistantText(chat)
 }
 
 /**
  * Walk the transcript backwards and return the last non-empty assistant text, or `undefined`
  * when no assistant message produced any visible text content.
  *
- * @param transcript - Messages emitted during the run, in transcript order.
+ * @param chat - Messages emitted during the run, in transcript order.
  * @returns The latest assistant text, or `undefined` when none exists.
+ * @throws EmptyAgentResponseError.
  */
-function lastAssistantText(transcript: readonly ChatMessage[]): string | undefined {
-  for (let index = transcript.length - 1; index >= 0; index -= 1) {
-    const message = transcript[index]
+function lastAssistantText(chat: Chat): string {
+  const messagesReplay = chat.getMessagesArray().toReversed()
 
+  for (const message of messagesReplay) {
     if (message.getRole() === "assistant") {
-      const text = message.getText().trim()
+      const text = message.getText()
 
-      if (text !== "") {
+      if (text.trim() !== "") {
         return text
       }
     }
   }
 
-  return undefined
+  throw new EmptyAgentResponseError()
 }

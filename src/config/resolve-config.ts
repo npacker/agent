@@ -27,7 +27,7 @@ export interface ResolvedConfig {
   /** Sampling temperature applied to the agent's predictions. */
   temperature: number
   /** Wall-clock cap on the agent run, in milliseconds. Always positive. */
-  timeoutMs: number
+  timeout: number
 }
 
 /**
@@ -45,7 +45,7 @@ export function resolveConfig(ctl: ToolsProviderController): ResolvedConfig {
     toolSources: pluginConfig.get("toolSources"),
     allowedTools: pluginConfig.get("allowedTools"),
     temperature: pluginConfig.get("temperature"),
-    timeoutMs: pluginConfig.get("timeoutSeconds") * MS_PER_SECOND,
+    timeout: pluginConfig.get("timeoutSeconds") * MS_PER_SECOND,
   }
 }
 
