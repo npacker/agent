@@ -7,6 +7,8 @@ import { Chat, type LMStudioClient, type Tool } from "@lmstudio/sdk"
 import { AgentTimeoutError, EmptyAgentResponseError } from "../errors/agent-error"
 import { isAbortError } from "../errors/inspect-error"
 
+import { StatusReporter } from "./status-reporter"
+
 /**
  * Options driving a single sub-agent run.
  */
@@ -29,6 +31,8 @@ export interface RunAgentOptions {
   signal: AbortSignal
   /** Status callback invoked at round boundaries to surface progress to the host UI. */
   onStatus: (message: string) => void
+  /** Warning callback invoked when an individual tool-call request fails to generate. */
+  onWarn: (message: string) => void
 }
 
 /**
@@ -47,6 +51,11 @@ export async function runAgent(client: LMStudioClient, options: RunAgentOptions)
     { role: "system", content: options.systemPrompt },
     { role: "user", content: options.task },
   ])
+  const reporter = new StatusReporter({
+    maxRounds: options.maxRounds,
+    onStatus: options.onStatus,
+    onWarn: options.onWarn,
+  })
 
   try {
     await model.act(chat, options.externalTools, {
@@ -60,7 +69,59 @@ export async function runAgent(client: LMStudioClient, options: RunAgentOptions)
        * @param roundIndex - Zero-based index of the round that just started.
        */
       onRoundStart: roundIndex => {
-        options.onStatus(`Agent round ${(roundIndex + 1).toString()}/${options.maxRounds.toString()}...`)
+        reporter.roundStart(roundIndex)
+      },
+
+      /**
+       * Tick the status line through prompt-processing buckets for the current round.
+       *
+       * @param _roundIndex - Round whose prompt is being processed; not needed by the reporter.
+       * @param progress - Fraction of prompt processing completed, in 0..1.
+       */
+      onPromptProcessingProgress: (_roundIndex, progress) => {
+        reporter.promptProgress(progress)
+      },
+
+      /**
+       * Mark that the model has begun emitting a tool call before the name has been parsed.
+       */
+      onToolCallRequestStart: () => {
+        reporter.toolCallStart()
+      },
+
+      /**
+       * Record the tool name against the SDK call ID and surface "calling X" in the status line.
+       *
+       * @param _roundIndex - Round in which the tool call was generated; not needed by the reporter.
+       * @param callId - SDK-supplied call identifier for the in-flight tool call.
+       * @param name - Tool name parsed from the model output.
+       */
+      onToolCallRequestNameReceived: (_roundIndex, callId, name) => {
+        reporter.toolCallNameReceived(callId, name)
+      },
+
+      /**
+       * Surface "executing X" once the tool call has been finalised and is about to run. The SDK
+       * fires `onToolCallRequestFinalized` for every execution (including previously queued ones,
+       * after their `onToolCallRequestDequeued`), so a single wiring covers both cases.
+       *
+       * @param _roundIndex - Round in which the tool call was generated; not needed by the reporter.
+       * @param callId - SDK-supplied call identifier for the in-flight tool call.
+       */
+      onToolCallRequestFinalized: (_roundIndex, callId) => {
+        reporter.toolCallExecuting(callId)
+      },
+
+      /**
+       * Forward a tool-call generation failure as a warning to the host UI, leaving the in-flight
+       * status line in place so the round phase remains visible.
+       *
+       * @param _roundIndex - Round in which the tool call was generated; not needed by the reporter.
+       * @param callId - SDK-supplied call identifier for the failing tool call.
+       * @param error - Error describing why the tool call could not be generated.
+       */
+      onToolCallRequestFailure: (_roundIndex, callId, error) => {
+        reporter.toolCallFailure(callId, error)
       },
 
       /**

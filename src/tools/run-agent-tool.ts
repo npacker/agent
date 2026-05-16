@@ -72,6 +72,7 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
           timeout: config.timeout,
           signal: context.signal,
           onStatus: context.status,
+          onWarn: context.warn,
         })
         context.status("Agent run complete.")
 
