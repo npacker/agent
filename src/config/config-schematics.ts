@@ -41,7 +41,7 @@ export const configSchematics = createConfigSchematics()
     {
       displayName: "Tool Source Plugins",
       subtitle:
-        "Plugin identifiers in 'owner/name' form (one per entry, exactly as shown in `lms ls --plugins` or on the LM Studio Hub). Empty list disables cross-plugin tools. LM Studio also requires you to grant the agent plugin permission to use each source (the 'plugins.use' permission) — accept the permission prompt when it appears, or grant it from the Plugins settings panel.",
+        "Plugin identifiers in 'owner/name' form, one per entry. Empty list disables cross-plugin tools.",
       allowEmptyStrings: false,
     },
     []
@@ -52,7 +52,7 @@ export const configSchematics = createConfigSchematics()
     {
       displayName: "Allowed Tools",
       subtitle:
-        "Exact tool names the sub-agent may call (one per entry, case-sensitive, matched verbatim against the name registered by the source plugin — e.g. 'Web Search', not 'web_search' or a display label). Whitespace is trimmed. Empty list allows every tool from a configured source. If any entry fails to match, the run is aborted before invoking the sub-agent and the error lists the available names. Tip: run `lms log stream` after the plugin loads to see the exact names discovered from each source.",
+        "Exact tool names the sub-agent may call, one per entry (case-sensitive). Empty list allows every tool from a configured source.",
       allowEmptyStrings: false,
     },
     []
