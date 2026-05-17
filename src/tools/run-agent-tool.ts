@@ -7,7 +7,7 @@ import { z } from "zod"
 
 import { runAgent } from "../agent"
 import { resolveConfig } from "../config/resolve-config"
-import { formatToolError, UnknownAllowedToolsError } from "../errors"
+import { formatToolError, UnknownAllowedToolsError, UnknownRequiredToolsError } from "../errors"
 
 import type { ToolBridge } from "../plugin-tools"
 
@@ -37,6 +37,12 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
         .describe(
           "The task for the sub-agent to complete. State the goal, the required output shape, any constraints, and inline any source material the sub-agent needs. Do not refer to 'the chat' or 'the user' — the sub-agent has no prior context."
         ),
+      requiredTools: z
+        .array(z.string().min(1))
+        .optional()
+        .describe(
+          "Optional list of tool names the sub-agent must call at least once during the run. Names must exactly match tools exposed to the sub-agent (case-sensitive). If any required tool is missing after a round, the runner appends a corrective user message and retries up to the operator's configured retry budget; on exhaustion the call fails. Pass only when you genuinely require a tool — leave omitted otherwise."
+        ),
     },
 
     /**
@@ -62,12 +68,25 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
           throw new UnknownAllowedToolsError(unknownNames, bridge.availableNames())
         }
 
+        const requiredTools = arguments_.requiredTools ?? []
+
+        if (requiredTools.length > 0) {
+          const availableNames = externalTools.map(t => t.name)
+          const unknownRequired = requiredTools.filter(name => !availableNames.includes(name))
+
+          if (unknownRequired.length > 0) {
+            throw new UnknownRequiredToolsError(unknownRequired, availableNames)
+          }
+        }
+
         const answer = await runAgent(ctl.client, {
           modelKey: config.modelKey,
           systemPrompt: arguments_.systemPrompt,
           task: arguments_.task,
           externalTools,
+          requiredTools,
           maxRounds: config.maxRounds,
+          maxRetries: config.maxRetries,
           temperature: config.temperature,
           timeout: config.timeout,
           signal: context.signal,

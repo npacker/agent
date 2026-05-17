@@ -67,15 +67,137 @@ export class UnknownAllowedToolsError extends Error {
 }
 
 /**
- * Compose the user-facing message for `UnknownAllowedToolsError`. Includes per-entry "did you
- * mean?" suggestions when one available name normalises to the same form as the unknown entry,
- * and always lists the full set of available names so the operator can pick the correct value.
+ * Raised when an `.act` run completes but the host LLM's `requiredTools` were not all invoked
+ * within the configured retry budget. Carries the missing names so the host (and the operator
+ * reading logs) can see exactly which tools the sub-agent declined to call.
+ */
+export class RequiredToolNotCalledError extends Error {
+  /** Required tool names that the sub-agent never invoked across all attempts. */
+  public readonly missing: readonly string[]
+  /** Number of `.act` attempts made before giving up (initial attempt plus retries). */
+  public readonly attempts: number
+
+  /**
+   * Construct a RequiredToolNotCalledError carrying the missing names and attempt count.
+   *
+   * @param missing - Required tool names that were never invoked.
+   * @param attempts - Number of `.act` attempts made before giving up.
+   */
+  public constructor(missing: readonly string[], attempts: number) {
+    super(buildRequiredToolNotCalledMessage(missing, attempts))
+    this.name = "RequiredToolNotCalledError"
+    this.missing = missing
+    this.attempts = attempts
+  }
+}
+
+/**
+ * Compose the user-facing message for `RequiredToolNotCalledError`. Lifted out of the constructor
+ * so the missing-names join can sit at module scope, avoiding the nested template-literal lint.
+ *
+ * @param missing - Required tool names that were never invoked.
+ * @param attempts - Number of `.act` attempts made before giving up.
+ * @returns The full error message.
+ */
+function buildRequiredToolNotCalledMessage(missing: readonly string[], attempts: number): string {
+  const list = missing.map(name => `"${name}"`).join(", ")
+
+  return `Agent run did not call required tools after ${attempts.toString()} attempt(s): ${list}.`
+}
+
+/**
+ * Raised when one or more entries in the host LLM's `requiredTools` argument do not match any
+ * tool actually exposed to the sub-agent (after the operator's `allowedTools` filter has been
+ * applied). Validated before the first `.act` call so an impossible-to-satisfy requirement
+ * fails fast instead of burning the entire retry budget.
+ *
+ * The message embeds a "did you mean?" suggestion for each unknown entry when a close match
+ * exists and always lists the available names so the host can correct the argument.
+ */
+export class UnknownRequiredToolsError extends Error {
+  /** Host-supplied entries that did not match any tool exposed to the sub-agent. */
+  public readonly unknown: readonly string[]
+  /** Tool names actually exposed to the sub-agent, after the operator's filter. */
+  public readonly available: readonly string[]
+
+  /**
+   * Construct an UnknownRequiredToolsError carrying both the unknown and available names.
+   *
+   * @param unknown - `requiredTools` entries that failed to match.
+   * @param available - Tool names exposed to the sub-agent after operator filtering.
+   */
+  public constructor(unknown: readonly string[], available: readonly string[]) {
+    super(buildUnknownRequiredToolsMessage(unknown, available))
+    this.name = "UnknownRequiredToolsError"
+    this.unknown = unknown
+    this.available = available
+  }
+}
+
+/**
+ * Audience-specific strings supplied by each call site of `buildUnknownNamesMessage`. The
+ * structural skeleton (entries with "did you mean ...?" suggestions plus an availability hint)
+ * is shared; the prefix and hint wording differs between the operator-facing `Allowed Tools`
+ * error and the host-LLM-facing `requiredTools` error.
+ */
+interface UnknownNamesMessageOptions {
+  /** Sentence opener naming the offending input (no trailing colon or punctuation). */
+  prefix: string
+  /** Full sentence shown when no tools are available at all. */
+  emptyHint: string
+  /** Label shown before the comma-joined list when at least one tool is available. */
+  availableLabel: string
+}
+
+/**
+ * Compose the user-facing message for `UnknownAllowedToolsError`. The wording targets the
+ * operator, who edits `Allowed Tools` in the plugin UI.
  *
  * @param unknown - Allowed-tools entries that failed to match.
  * @param available - Tool names exposed by the source plugins.
  * @returns The full error message.
  */
 function buildUnknownToolsMessage(unknown: readonly string[], available: readonly string[]): string {
+  return buildUnknownNamesMessage(unknown, available, {
+    prefix: "Allowed Tools entries did not match any exposed tool",
+    emptyHint:
+      "No tools are exposed by the configured source plugins — check Tool Source Plugins, or leave Allowed Tools empty to allow every tool from a configured source.",
+    availableLabel: "Available tool names (case-sensitive, copy verbatim)",
+  })
+}
+
+/**
+ * Compose the user-facing message for `UnknownRequiredToolsError`. The wording targets the host
+ * LLM, which supplied the `requiredTools` argument that failed validation.
+ *
+ * @param unknown - `requiredTools` entries that failed to match.
+ * @param available - Tool names exposed to the sub-agent after operator filtering.
+ * @returns The full error message.
+ */
+function buildUnknownRequiredToolsMessage(unknown: readonly string[], available: readonly string[]): string {
+  return buildUnknownNamesMessage(unknown, available, {
+    prefix: "`requiredTools` entries did not match any tool exposed to the sub-agent",
+    emptyHint:
+      "No tools are exposed to the sub-agent — the operator's Tool Source Plugins and Allowed Tools settings yield an empty tool set.",
+    availableLabel: "Available tool names (case-sensitive)",
+  })
+}
+
+/**
+ * Shared skeleton for "unknown names" error messages: list the offending entries with per-entry
+ * "did you mean ...?" suggestions (when an unambiguous match exists), then append either the
+ * empty-set hint or the labelled list of available names.
+ *
+ * @param unknown - Entries that failed to match an available name.
+ * @param available - Names actually available, used to suggest matches and populate the hint.
+ * @param options - Audience-specific wording for the prefix and the two availability hints.
+ * @returns The full error message.
+ */
+function buildUnknownNamesMessage(
+  unknown: readonly string[],
+  available: readonly string[],
+  options: UnknownNamesMessageOptions
+): string {
   const entries = unknown
     .map(entry => {
       const suggestion = suggestMatch(entry, available)
@@ -85,11 +207,9 @@ function buildUnknownToolsMessage(unknown: readonly string[], available: readonl
     .join(", ")
 
   const availableHint =
-    available.length === 0
-      ? "No tools are exposed by the configured source plugins — check Tool Source Plugins, or leave Allowed Tools empty to allow every tool from a configured source."
-      : `Available tool names (case-sensitive, copy verbatim): ${available.join(", ")}.`
+    available.length === 0 ? options.emptyHint : `${options.availableLabel}: ${available.join(", ")}.`
 
-  return `Allowed Tools entries did not match any exposed tool: ${entries}. ${availableHint}`
+  return `${options.prefix}: ${entries}. ${availableHint}`
 }
 
 /**

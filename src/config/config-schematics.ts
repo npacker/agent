@@ -58,6 +58,24 @@ export const configSchematics = createConfigSchematics()
     []
   )
   .field(
+    "maxRetries",
+    "numeric",
+    {
+      displayName: "Max Required-Tool Retries",
+      subtitle:
+        "0 to 5. Extra `.act` invocations granted after a round that did not call every tool listed in the call's `requiredTools` parameter. Orthogonal to Max Prediction Rounds: that caps rounds within one `.act`; this caps additional `.act` runs after a missing-tool diagnosis. Set to 0 to disable retries.",
+      min: 0,
+      max: 5,
+      int: true,
+      slider: {
+        step: 1,
+        min: 0,
+        max: 5,
+      },
+    },
+    1
+  )
+  .field(
     "temperature",
     "numeric",
     {

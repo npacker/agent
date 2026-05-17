@@ -38,6 +38,10 @@ export class StatusReporter {
   private readonly options: StatusReporterOptions
   /** Tool name keyed by SDK `callId` so failure / execute phases can refer to the tool by name. */
   private readonly toolNames: Map<number, string>
+  /** Currently active attempt, 1-based for display. Zero until the first attempt starts. */
+  private currentAttempt: number
+  /** Upper bound on attempts for the run. `1` suppresses the attempt prefix in status output. */
+  private maxAttempts: number
   /** Currently active round, 1-based for display. Zero until the first round starts. */
   private currentRound: number
   /** Last prompt-processing bucket emitted in the current round, or `-1` if none yet. */
@@ -51,8 +55,26 @@ export class StatusReporter {
   public constructor(options: StatusReporterOptions) {
     this.options = options
     this.toolNames = new Map()
+    this.currentAttempt = 0
+    this.maxAttempts = 1
     this.currentRound = 0
     this.lastProgressBucket = -1
+  }
+
+  /**
+   * Handle the start of a new `.act` attempt: bump the attempt counter, capture the new upper
+   * bound, and clear per-attempt state (round counter, progress bucket, and tool-name map) so
+   * stale `callId → name` entries from the previous attempt cannot collide.
+   *
+   * @param attempt - One-based index of the attempt that is starting.
+   * @param maxAttempts - Upper bound on attempts for the run. When `1`, output omits the attempt prefix.
+   */
+  public attemptStart(attempt: number, maxAttempts: number): void {
+    this.currentAttempt = attempt
+    this.maxAttempts = maxAttempts
+    this.currentRound = 0
+    this.lastProgressBucket = -1
+    this.toolNames.clear()
   }
 
   /**
@@ -131,11 +153,19 @@ export class StatusReporter {
   }
 
   /**
-   * Format and forward a status line for the current round.
+   * Format and forward a status line for the current round. Includes an `attempt A/T` prefix when
+   * the run is budgeted for more than one attempt, so the host UI distinguishes the initial run
+   * from required-tool retries.
    *
    * @param phase - Phase-specific suffix appended after the round prefix.
    */
   private emit(phase: string): void {
-    this.options.onStatus(`Agent round ${this.currentRound.toString()}/${this.options.maxRounds.toString()} — ${phase}`)
+    const round = `round ${this.currentRound.toString()}/${this.options.maxRounds.toString()}`
+    const prefix =
+      this.maxAttempts > 1
+        ? `Agent attempt ${this.currentAttempt.toString()}/${this.maxAttempts.toString()} ${round}`
+        : `Agent ${round}`
+
+    this.options.onStatus(`${prefix} — ${phase}`)
   }
 }
