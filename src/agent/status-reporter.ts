@@ -22,8 +22,9 @@ export interface StatusReporterOptions {
 }
 
 /**
- * Discrete prompt-processing buckets reported between 0% and 90%. The 100% point is suppressed so
- * the final tick never lingers before the generation phase takes over the status line.
+ * Discrete prompt-processing buckets reported between 0% and 100% inclusive. Eleven distinct values
+ * are surfaced (0%, 10%, …, 100%); the generation-phase transition is signalled separately via
+ * `generationStarted`.
  */
 const PROMPT_PROGRESS_BUCKETS = 10
 
@@ -91,19 +92,28 @@ export class StatusReporter {
 
   /**
    * Handle a prompt-processing progress fragment. Emissions are throttled to integer 10% buckets
-   * and the 100% point is suppressed so the line moves cleanly into the generation phase.
+   * and include the 100% tick; the generation phase is announced separately by `generationStarted`.
    *
    * @param progress - Fraction of prompt processing completed, in the range 0..1 inclusive.
    */
   public promptProgress(progress: number): void {
-    const bucket = Math.floor(progress * PROMPT_PROGRESS_BUCKETS)
+    const bucket = Math.min(Math.floor(progress * PROMPT_PROGRESS_BUCKETS), PROMPT_PROGRESS_BUCKETS)
 
-    if (bucket === this.lastProgressBucket || bucket >= PROMPT_PROGRESS_BUCKETS) {
+    if (bucket === this.lastProgressBucket) {
       return
     }
 
     this.lastProgressBucket = bucket
     this.emit(`processing prompt ${(bucket * PROMPT_PROGRESS_BUCKETS).toString()}%`)
+  }
+
+  /**
+   * Handle the SDK's "first token of the round has been produced" signal: prompt processing has
+   * completed and the model has started generating. Surfaces a "generating" status so the line
+   * does not linger on the final prompt-processing tick.
+   */
+  public generationStarted(): void {
+    this.emit("generating")
   }
 
   /**

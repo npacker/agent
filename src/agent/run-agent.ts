@@ -153,6 +153,15 @@ async function runOneAttempt(model: LLM, options: RunAgentOptions, context: Atte
       },
 
       /**
+       * Transition the status line out of prompt-processing once the model emits its first token.
+       *
+       * @param _roundIndex - Round in which generation has started; not needed by the reporter.
+       */
+      onFirstToken: _roundIndex => {
+        reporter.generationStarted()
+      },
+
+      /**
        * Mark that the model has begun emitting a tool call before the name has been parsed.
        */
       onToolCallRequestStart: () => {
