@@ -23,25 +23,25 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
   return tool({
     name: "Run Agent",
     description:
-      "Delegate a task to a sub-agent LLM running in LM Studio and return its final answer. Suitable for self-contained reasoning, summarisation, drafting, or multi-step work. Supply the sub-agent's system prompt yourself, tailored to the user's query. The sub-agent has no access to this chat's history. Cross-plugin tool access is governed by the plugin's configuration.",
+      "Dispatch a sub-agent in a separate context. Suitable for self-contained reasoning, summarisation, drafting, or complex multi-step work. Supply the sub-agent's system prompt and task, tailored to the user's query.",
     parameters: {
       systemPrompt: z
         .string()
         .min(1)
         .describe(
-          "System prompt for the sub-agent, written by you to fit the user's query. State the persona, output style, and any standing constraints. The sub-agent has no prior context, so any background it needs must be included here or in the task."
+          "The system prompt for the sub-agent, written by you to fit the user's query. State the persona, output style, and any standing constraints. The sub-agent has no access to the chat history or previous user messages, so any relevant background information **MUST** be included here or in the task."
         ),
       task: z
         .string()
         .min(1)
         .describe(
-          "The task for the sub-agent to complete. State the goal, the required output shape, any constraints, and inline any source material the sub-agent needs. Do not refer to 'the chat' or 'the user' — the sub-agent has no prior context."
+          "The task for the sub-agent to complete. State the goal, the required output shape, any constraints, and any source material or context the sub-agent needs. The sub-agent has no access to the chat history or previous user messages, so any relevant context **MUST** be included here or in the system prompt."
         ),
       requiredTools: z
         .array(z.string().min(1))
         .optional()
         .describe(
-          "Optional list of tool names the sub-agent must call at least once during the run. Names must exactly match tools exposed to the sub-agent (case-sensitive). If any required tool is missing after a round, the runner appends a corrective user message and retries up to the operator's configured retry budget; on exhaustion the call fails. Pass only when you genuinely require a tool — leave omitted otherwise."
+          "Optional list of tool names the sub-agent must call at least once during the run. Names must exactly match tools exposed to the sub-agent (case-sensitive). Pass only when you genuinely require a tool — omit otherwise."
         ),
     },
 
