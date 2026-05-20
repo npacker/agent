@@ -29,13 +29,13 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
         .string()
         .min(1)
         .describe(
-          "The system prompt for the sub-agent, written by you to fit the user's query. State the persona, output style, and any standing constraints. The sub-agent has **NO** access to the chat history or previous user messages, so any relevant background information **MUST** be included in the system prompt or task."
+          "The system prompt for the sub-agent, written by you to fit the user's query. State the persona, output style, and any standing constraints. The sub-agent has **NO** access to the chat history or previous user messages, so any relevant background information **MUST** be included in the system prompt or task. **Write the full, literal text. Do NOT use placeholders.**"
         ),
       task: z
         .string()
         .min(1)
         .describe(
-          "The task for the sub-agent to complete. State the goal, the required output shape, any constraints, and any source material or context the sub-agent needs. The sub-agent has **NO** access to the chat history or previous user messages, so any relevant context **MUST** be included along with the task or system prompt."
+          "The task for the sub-agent to complete. State the goal, the required output shape, any constraints, and any source material or context the sub-agent needs. The sub-agent has **NO** access to the chat history or previous user messages, so any relevant context **MUST** be included in the task or system prompt. **Write the full, literal text. Do NOT use placeholders.**"
         ),
       requiredTools: z
         .array(z.string().min(1))
