@@ -294,6 +294,18 @@ export default [
         { blankLine: "always", prev: "*", next: "return" },
         { blankLine: "always", prev: "block-like", next: "*" },
         { blankLine: "always", prev: "*", next: "block-like" },
+
+        // Single-line conditionals: blank line before and after.
+        { blankLine: "always", prev: "if", next: "*" },
+        { blankLine: "always", prev: "*", next: "if" },
+
+        // const/let declarations: blank line before and after, except between
+        // consecutive declarations (and the "first in block" case needs no
+        // padding because there is no preceding statement to separate from).
+        { blankLine: "always", prev: "*", next: ["const", "let"] },
+        { blankLine: "always", prev: ["const", "let"], next: "*" },
+        { blankLine: "any", prev: ["const", "let"], next: ["const", "let"] },
+
         { blankLine: "always", prev: "*", next: "interface" },
         { blankLine: "always", prev: "interface", next: "*" },
       ],

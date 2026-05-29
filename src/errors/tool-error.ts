@@ -32,6 +32,7 @@ export function formatToolError(error: unknown, context: ToolErrorContext, prefi
   }
 
   const message = errorMessage(error)
+
   context.warn(`${prefix}: ${message}`)
 
   return `${prefix}: ${message}`

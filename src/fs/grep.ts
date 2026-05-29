@@ -91,6 +91,8 @@ export async function grep(root: string, { pattern, signal }: GrepOptions): Prom
 
           if (content === undefined || content.length === 0 || content.includes(0)) return
 
+          result.filesSearched++
+
           const lines = content.toString("utf8").split(/\r?\n/)
 
           for (const [index, line] of lines.entries()) {
@@ -104,8 +106,6 @@ export async function grep(root: string, { pattern, signal }: GrepOptions): Prom
 
             result.matches.push({ path: relativePath, lineNumber: index + 1, line: display })
           }
-
-          result.filesSearched++
         })
       })
     )
