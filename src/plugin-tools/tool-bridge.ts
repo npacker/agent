@@ -68,32 +68,37 @@ export class ToolBridge {
    *
    * Sessions are opened in parallel; sources that fail to open are recorded as open warnings
    * so a single broken identifier does not block plugin startup. Tool-name collisions across
-   * sessions are resolved first-source-wins and also surfaced as open warnings.
+   * sessions are resolved first-source-wins and also surfaced as open warnings. Internal
+   * tools, if any, are merged into the same candidate pool **first** so they take precedence
+   * over a cross-plugin tool with the same name; collisions are surfaced as open warnings.
    *
    * @param client - LM Studio client used to open `pluginTools` sessions.
    * @param sources - Plugin identifiers (`"owner/name"`) whose tools should be exposed.
+   * @param internalTools - Plugin-internal tools (built locally) to expose to the sub-agent
+   * alongside cross-plugin tools. Empty array disables internal-tool exposure.
    * @returns A bridge holding one session per successfully opened source.
    */
-  public static async open(client: LMStudioClient, sources: string[]): Promise<ToolBridge> {
-    if (sources.length === 0) {
-      logDiscoveredTools([], [])
-
-      return new ToolBridge([], new Map(), [])
-    }
-
-    const results = await Promise.allSettled(sources.map(async source => client.plugins.pluginTools(source)))
+  public static async open(
+    client: LMStudioClient,
+    sources: string[],
+    internalTools: readonly Tool[]
+  ): Promise<ToolBridge> {
     const sessions: ToolSession[] = []
     const openWarnings: string[] = []
 
-    for (const [index, result] of results.entries()) {
-      if (result.status === "fulfilled") {
-        sessions.push(result.value)
-      } else {
-        openWarnings.push(formatSourceFailure(sources[index], result.reason))
+    if (sources.length > 0) {
+      const results = await Promise.allSettled(sources.map(async source => client.plugins.pluginTools(source)))
+
+      for (const [index, result] of results.entries()) {
+        if (result.status === "fulfilled") {
+          sessions.push(result.value)
+        } else {
+          openWarnings.push(formatSourceFailure(sources[index], result.reason))
+        }
       }
     }
 
-    const toolsByName = buildToolMap(sessions, openWarnings)
+    const toolsByName = buildToolMap(sessions, internalTools, openWarnings)
 
     logDiscoveredTools(sources, [...toolsByName.keys()])
 
@@ -166,22 +171,34 @@ export class ToolBridge {
 }
 
 /**
- * Build a deduplicated `name → Tool` map from open sessions, recording cross-session collisions
- * as open warnings. First session wins for any given tool name.
+ * Build a deduplicated `name → Tool` map from internal tools and open cross-plugin sessions,
+ * recording collisions as open warnings.
+ *
+ * Internal tools are inserted **first** so they take precedence: a third-party source plugin
+ * cannot shadow an internal tool name by accident or design. A cross-plugin tool whose name
+ * collides with an internal tool surfaces a warning describing which one was kept.
+ * Cross-plugin collisions remain first-source-wins as before.
  *
  * @param sessions - Open sessions whose tools should be flattened.
- * @param openWarnings - Warning accumulator to append duplicate-tool messages to.
+ * @param internalTools - Plugin-internal tools that should win over any cross-plugin name collision.
+ * @param openWarnings - Warning accumulator to append collision messages to.
  * @returns The deduplicated map.
  */
-function buildToolMap(sessions: ToolSession[], openWarnings: string[]): Map<string, Tool> {
+function buildToolMap(
+  sessions: readonly ToolSession[],
+  internalTools: readonly Tool[],
+  openWarnings: string[]
+): Map<string, Tool> {
   const byName = new Map<string, Tool>()
+
+  for (const internalTool of internalTools) {
+    byName.set(internalTool.name, internalTool)
+  }
 
   for (const session of sessions) {
     for (const remoteTool of session.tools) {
       if (byName.has(remoteTool.name)) {
-        openWarnings.push(
-          `Duplicate tool name "${remoteTool.name}" across source plugins; keeping the first occurrence.`
-        )
+        openWarnings.push(buildCollisionMessage(remoteTool.name, internalTools))
         continue
       }
 
@@ -190,6 +207,26 @@ function buildToolMap(sessions: ToolSession[], openWarnings: string[]): Map<stri
   }
 
   return byName
+}
+
+/**
+ * Compose the open-warning message for a tool-name collision while building the bridge's
+ * tool map. The wording differs depending on whether the colliding name belongs to an internal
+ * tool (in which case the cross-plugin tool is being shadowed) or to a prior cross-plugin
+ * session (first-source-wins).
+ *
+ * @param name - Tool name that already exists in the map when the collision was detected.
+ * @param internalTools - Plugin-internal tools inserted first, used to discriminate the message.
+ * @returns A human-readable warning string.
+ */
+function buildCollisionMessage(name: string, internalTools: readonly Tool[]): string {
+  const isInternalShadow = internalTools.some(tool => tool.name === name)
+
+  if (isInternalShadow) {
+    return `Cross-plugin tool "${name}" collides with the internal tool of the same name; keeping the internal one.`
+  }
+
+  return `Duplicate tool name "${name}" across source plugins; keeping the first occurrence.`
 }
 
 /**

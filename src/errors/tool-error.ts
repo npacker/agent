@@ -2,14 +2,8 @@
  * User-facing error formatting for tool invocations.
  */
 
-import {
-  AgentTimeoutError,
-  EmptyAgentResponseError,
-  RequiredToolNotCalledError,
-  UnknownAllowedToolsError,
-  UnknownRequiredToolsError,
-} from "./agent-error"
 import { errorMessage, isAbortError } from "./inspect-error"
+import { UserFacingError } from "./user-facing-error"
 
 /**
  * Minimal context surface required by the tool-error formatter for warning output.
@@ -24,25 +18,21 @@ interface ToolErrorContext {
  *
  * @param error - Error caught during tool execution.
  * @param context - Minimal context surface used to emit warnings.
+ * @param prefix - Leading label for the error string, e.g. `"Search failed"`. Defaults to
+ * `"Error"`.
  * @returns A user-facing error string.
  */
-export function formatToolError(error: unknown, context: ToolErrorContext): string {
+export function formatToolError(error: unknown, context: ToolErrorContext, prefix = "Error"): string {
   if (isAbortError(error)) {
     return "Agent run aborted by user."
   }
 
-  if (
-    error instanceof AgentTimeoutError ||
-    error instanceof EmptyAgentResponseError ||
-    error instanceof RequiredToolNotCalledError ||
-    error instanceof UnknownAllowedToolsError ||
-    error instanceof UnknownRequiredToolsError
-  ) {
-    return `Error: ${error.message}`
+  if (error instanceof UserFacingError) {
+    return `${prefix}: ${error.message}`
   }
 
   const message = errorMessage(error)
-  context.warn(`Error during agent run: ${message}`)
+  context.warn(`${prefix}: ${message}`)
 
-  return `Error: ${message}`
+  return `${prefix}: ${message}`
 }

@@ -362,6 +362,38 @@ export default [
     },
   },
   {
+    files: ["src/internal-tools/*.ts"],
+    ignores: ["src/internal-tools/*-tool.ts", "src/internal-tools/index.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Program",
+          message:
+            "Files in `src/internal-tools/` must be named `*-tool.ts` and contain a single `create*Tool` factory (or be `index.ts`). Move helpers to `src/fs/` (or another top-level sibling module under `src/`).",
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/internal-tools/*-tool.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "FunctionDeclaration[id.name!=/^create[A-Z].*Tool$/]",
+          message:
+            "Functions declared in `src/internal-tools/*-tool.ts` must be named `create<Name>Tool`. Move helpers to `src/fs/` (or another top-level sibling module under `src/`).",
+        },
+        {
+          selector: "FunctionDeclaration:not([returnType.typeAnnotation.typeName.name='Tool'])",
+          message:
+            "Functions declared in `src/internal-tools/*-tool.ts` must have an explicit `Tool` return type. Move helpers to `src/fs/` (or another top-level sibling module under `src/`).",
+        },
+      ],
+    },
+  },
+  {
     ignores: ["node_modules/", "dist/", "*.js"],
   },
 ];

@@ -4,7 +4,7 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "target": "ES2024",
-    "lib": ["ES2024"],
+    "lib": ["ES2024", "ESNext.Disposable"],
     "declaration": true,
     "noImplicitOverride": true,
     "sourceMap": true,

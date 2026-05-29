@@ -7,6 +7,7 @@
  */
 
 import { resolveConfig } from "./config/resolve-config"
+import { buildInternalTools } from "./internal-tools"
 import { ToolBridge } from "./plugin-tools"
 import { createRunAgentTool } from "./tools/run-agent-tool"
 
@@ -63,7 +64,8 @@ export async function toolsProvider(ctl: ToolsProviderController): Promise<Tool[
  */
 async function doRegister(ctl: ToolsProviderController): Promise<Tool[]> {
   const config = resolveConfig(ctl)
-  const newBridge = await ToolBridge.open(ctl.client, config.toolSources)
+  const internalTools = config.enableInternalTools ? buildInternalTools(ctl) : []
+  const newBridge = await ToolBridge.open(ctl.client, config.toolSources, internalTools)
   const previousBridge = activeBridge
 
   activeBridge = newBridge

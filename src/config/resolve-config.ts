@@ -24,6 +24,8 @@ export interface ResolvedConfig {
   toolSources: string[]
   /** Exact tool names the sub-agent may call. Empty allows all tools from configured sources. */
   allowedTools: string[]
+  /** When `true`, expose the plugin-internal filesystem tools (list_files, read_file, grep) to the sub-agent. */
+  enableInternalTools: boolean
   /** Extra `.act` invocations granted when the host's `requiredTools` are not all called. */
   maxRetries: number
   /** Sampling temperature applied to the agent's predictions. */
@@ -46,6 +48,7 @@ export function resolveConfig(ctl: ToolsProviderController): ResolvedConfig {
     maxRounds: pluginConfig.get("maxRounds"),
     toolSources: pluginConfig.get("toolSources"),
     allowedTools: pluginConfig.get("allowedTools"),
+    enableInternalTools: pluginConfig.get("enableInternalTools"),
     maxRetries: pluginConfig.get("maxRetries"),
     temperature: pluginConfig.get("temperature"),
     timeout: pluginConfig.get("timeoutSeconds") * MS_PER_SECOND,

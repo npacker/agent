@@ -40,8 +40,7 @@ export const configSchematics = createConfigSchematics()
     "stringArray",
     {
       displayName: "Tool Source Plugins",
-      subtitle:
-        "Plugin identifiers in 'owner/name' form, one per entry. Empty list disables cross-plugin tools.",
+      subtitle: "Plugin identifiers in 'owner/name' form, one per entry. Empty list disables cross-plugin tools.",
       allowEmptyStrings: false,
     },
     []
@@ -52,10 +51,20 @@ export const configSchematics = createConfigSchematics()
     {
       displayName: "Allowed Tools",
       subtitle:
-        "Exact tool names the sub-agent may call, one per entry (case-sensitive). Empty list allows every tool from a configured source.",
+        "Exact tool names the sub-agent may call, one per entry (case-sensitive). Empty list allows every tool from a configured source, plus every internal tool when Enable Internal Tools is on.",
       allowEmptyStrings: false,
     },
     []
+  )
+  .field(
+    "enableInternalTools",
+    "boolean",
+    {
+      displayName: "Enable Internal Tools",
+      subtitle:
+        "When on, the sub-agent can call the plugin-internal filesystem tools (list_files, read_file, grep), scoped to the LM Studio working directory. The Allowed Tools filter still applies as a ceiling.",
+    },
+    true
   )
   .field(
     "maxRetries",

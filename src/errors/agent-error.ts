@@ -2,10 +2,12 @@
  * Errors raised by the agent runner before, during, or after a `.act` invocation.
  */
 
+import { UserFacingError } from "./user-facing-error"
+
 /**
  * Raised when the agent timeout fires before the run completes.
  */
-export class AgentTimeoutError extends Error {
+export class AgentTimeoutError extends UserFacingError {
   /** Configured wall-clock timeout that elapsed, in milliseconds. */
   public readonly timeout: number
 
@@ -27,7 +29,7 @@ export class AgentTimeoutError extends Error {
  * Can occur when the configured model issues only tool calls (none registered here) or
  * stops on a content-filter / context-length boundary before emitting visible output.
  */
-export class EmptyAgentResponseError extends Error {
+export class EmptyAgentResponseError extends UserFacingError {
   /**
    * Construct an EmptyAgentResponseError with a default user-facing message.
    */
@@ -46,7 +48,7 @@ export class EmptyAgentResponseError extends Error {
  * exists (case-insensitive, punctuation-insensitive) plus the full list of available names so
  * the operator can fix the configuration without leaving LM Studio.
  */
-export class UnknownAllowedToolsError extends Error {
+export class UnknownAllowedToolsError extends UserFacingError {
   /** Operator-supplied entries that did not match a known tool. */
   public readonly unknown: readonly string[]
   /** Tool names exposed by the source plugins, after dedupe. */
@@ -71,7 +73,7 @@ export class UnknownAllowedToolsError extends Error {
  * within the configured retry budget. Carries the missing names so the host (and the operator
  * reading logs) can see exactly which tools the sub-agent declined to call.
  */
-export class RequiredToolNotCalledError extends Error {
+export class RequiredToolNotCalledError extends UserFacingError {
   /** Required tool names that the sub-agent never invoked across all attempts. */
   public readonly missing: readonly string[]
   /** Number of `.act` attempts made before giving up (initial attempt plus retries). */
@@ -114,7 +116,7 @@ function buildRequiredToolNotCalledMessage(missing: readonly string[], attempts:
  * The message embeds a "did you mean?" suggestion for each unknown entry when a close match
  * exists and always lists the available names so the host can correct the argument.
  */
-export class UnknownRequiredToolsError extends Error {
+export class UnknownRequiredToolsError extends UserFacingError {
   /** Host-supplied entries that did not match any tool exposed to the sub-agent. */
   public readonly unknown: readonly string[]
   /** Tool names actually exposed to the sub-agent, after the operator's filter. */

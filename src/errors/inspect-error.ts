@@ -17,6 +17,22 @@ export function isAbortError(error: unknown): boolean {
 }
 
 /**
+ * Extract Node's string error `code` (e.g. `"ENOENT"`, `"EACCES"`) from a thrown value, without
+ * an unsafe cast. Shared by the filesystem helpers that branch on specific errno codes.
+ *
+ * @param error - Thrown value to inspect.
+ * @returns The `code` string when the value is an `Error` carrying a string `code`, otherwise
+ * `undefined`.
+ */
+export function errorCode(error: unknown): string | undefined {
+  if (error instanceof Error && "code" in error && typeof error.code === "string") {
+    return error.code
+  }
+
+  return undefined
+}
+
+/**
  * Extract a human-readable message from an arbitrary thrown value.
  *
  * @param error - Thrown value to stringify.
