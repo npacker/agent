@@ -7,7 +7,13 @@ import { z } from "zod"
 
 import { runAgent } from "../agent"
 import { resolveConfig } from "../config/resolve-config"
-import { formatToolError, UnknownAllowedToolsError, UnknownRequiredToolsError } from "../errors"
+import { runEditAgent } from "../edit/run-edit-agent"
+import {
+  FileEditingDisabledError,
+  formatToolError,
+  UnknownAllowedToolsError,
+  UnknownRequiredToolsError,
+} from "../errors"
 
 import type { ToolBridge } from "../plugin-tools"
 
@@ -23,7 +29,7 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
   return tool({
     name: "Run Agent",
     description:
-      "Dispatch a sub-agent in a separate, isolated context. Suitable for self-contained reasoning, summarisation, drafting, or complex multi-step work. Supply the sub-agent's system prompt and task, tailored to the user's query, along with any relevant user input or additional context (e.g text to summarize, code to review, documents to compare).",
+      "Dispatch a sub-agent in a separate, isolated context. Suitable for self-contained reasoning, summarisation, drafting, or complex multi-step work. Supply the sub-agent's system prompt and task, tailored to the user's query, along with any relevant user input or additional context (e.g text to summarize, code to review, documents to compare). To delegate a file edit, also pass the `file` parameter: the sub-agent edits that file via find-and-replace and you receive a summary plus a unified diff instead of the full file text.",
     parameters: {
       systemPrompt: z
         .string()
@@ -41,7 +47,14 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
         .array(z.string().min(1))
         .optional()
         .describe(
-          "Optional list of tool names the sub-agent must call at least once during the run. Names must exactly match tools exposed to the sub-agent (case-sensitive). Pass only when you genuinely require a tool — omit otherwise."
+          "Optional list of tool names the sub-agent must call at least once during the run. Names must exactly match tools exposed to the sub-agent (case-sensitive). Pass only when you genuinely require a tool — omit otherwise. Ignored when `file` is set."
+        ),
+      file: z
+        .string()
+        .min(1)
+        .optional()
+        .describe(
+          "Optional path to a file to edit, relative to the LM Studio working directory. When set, the sub-agent edits this file via find-and-replace and the tool returns a summary plus a unified diff (the edited result is written back to the file). Omit for non-editing tasks."
         ),
     },
 
@@ -57,6 +70,18 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
 
       try {
         const config = resolveConfig(ctl)
+
+        if (arguments_.file !== undefined) {
+          if (!config.enableFileEditing) {
+            throw new FileEditingDisabledError()
+          }
+
+          return await runEditAgent(
+            ctl,
+            { file: arguments_.file, systemPrompt: arguments_.systemPrompt, task: arguments_.task, config },
+            context
+          )
+        }
 
         for (const openWarning of bridge.openWarnings) {
           context.warn(openWarning)

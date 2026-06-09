@@ -5,6 +5,7 @@ export {
   UnknownAllowedToolsError,
   UnknownRequiredToolsError,
 } from "./agent-error"
+export { AmbiguousEditError, EditNotFoundError, FileEditingDisabledError, RollbackRangeError } from "./edit-error"
 export { BinaryFileError, FileNotFoundError, FileTooLargeError, InvalidRegexError, PathEscapeError } from "./fs-error"
 export { errorCode, errorMessage, isAbortError } from "./inspect-error"
 export { formatToolError } from "./tool-error"

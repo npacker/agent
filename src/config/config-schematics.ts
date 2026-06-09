@@ -67,6 +67,16 @@ export const configSchematics = createConfigSchematics()
     true
   )
   .field(
+    "enableFileEditing",
+    "boolean",
+    {
+      displayName: "Enable File Editing",
+      subtitle:
+        "When on, the host can pass a `file` path to the Run Agent tool. The sub-agent edits an in-memory copy via find-and-replace and the final result is written back to that file atomically; the tool returns a summary and a unified diff. Off by default. The file must live inside the LM Studio working directory.",
+    },
+    false
+  )
+  .field(
     "maxRetries",
     "numeric",
     {

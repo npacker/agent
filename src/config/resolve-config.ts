@@ -26,6 +26,8 @@ export interface ResolvedConfig {
   allowedTools: string[]
   /** When `true`, expose the plugin-internal filesystem tools (list_files, read_file, grep) to the sub-agent. */
   enableInternalTools: boolean
+  /** When `true`, allow the host to dispatch a single-file edit run via the Run Agent `file` parameter. */
+  enableFileEditing: boolean
   /** Extra `.act` invocations granted when the host's `requiredTools` are not all called. */
   maxRetries: number
   /** Sampling temperature applied to the agent's predictions. */
@@ -49,6 +51,7 @@ export function resolveConfig(ctl: ToolsProviderController): ResolvedConfig {
     toolSources: pluginConfig.get("toolSources"),
     allowedTools: pluginConfig.get("allowedTools"),
     enableInternalTools: pluginConfig.get("enableInternalTools"),
+    enableFileEditing: pluginConfig.get("enableFileEditing"),
     maxRetries: pluginConfig.get("maxRetries"),
     temperature: pluginConfig.get("temperature"),
     timeout: pluginConfig.get("timeoutSeconds") * MS_PER_SECOND,
