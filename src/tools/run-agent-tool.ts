@@ -35,7 +35,7 @@ export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBri
         .string()
         .min(1)
         .describe(
-          "The task for the sub-agent to complete. State the goal, the required output shape, any constraints, and any source material or context the sub-agent needs. The sub-agent has **NO** access to your memory, the chat history, or user prompts, so any relevant context **MUST** be included in the task or system prompt."
+          "The task for the sub-agent to complete. State the goal, the required output shape, any constraints, and any source material or context the sub-agent needs. The sub-agent has **NO** access to your memory, the chat history, or user prompts, so any relevant context **MUST** be included in the task or system prompt. EXCEPTION: when internal tools are enabled, the sub-agent can read this chat's file attachments and the user's latest message itself via the `list_attachments` and `read_attachment` tools — for bulk source material (e.g. a large document to edit or summarise), instruct it to read the source by name (e.g. \"edit the attached document\") instead of copying the text into this field."
         ),
       requiredTools: z
         .array(z.string().min(1))

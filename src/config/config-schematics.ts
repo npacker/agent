@@ -62,7 +62,7 @@ export const configSchematics = createConfigSchematics()
     {
       displayName: "Enable Internal Tools",
       subtitle:
-        "When on, the sub-agent can call the plugin-internal filesystem tools (list_files, read_file, grep), scoped to the LM Studio working directory. The Allowed Tools filter still applies as a ceiling.",
+        "When on, the sub-agent can call the plugin-internal tools: filesystem tools (list_files, read_file, grep) scoped to the LM Studio working directory, plus context tools (list_attachments, read_attachment) that read this chat's file attachments and your latest message. The Allowed Tools filter still applies as a ceiling.",
     },
     true
   )

@@ -5,6 +5,7 @@
  */
 
 import { configSchematics } from "./config/config-schematics"
+import { chatContextPreprocessor } from "./preprocessor/chat-context-preprocessor"
 import { toolsProvider } from "./tools-provider"
 
 import type { PluginContext } from "@lmstudio/sdk"
@@ -17,5 +18,6 @@ import type { PluginContext } from "@lmstudio/sdk"
  */
 export async function main(context: PluginContext): Promise<void> {
   context.withConfigSchematics(configSchematics)
+  context.withPromptPreprocessor(chatContextPreprocessor)
   context.withToolsProvider(toolsProvider)
 }
