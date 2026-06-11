@@ -5,7 +5,7 @@
 import { tool, type Tool, type ToolsProviderController } from "@lmstudio/sdk"
 import { z } from "zod"
 
-import { LATEST_USER_MESSAGE_NAME, getChatContext } from "../chat-context/store"
+import { FIRST_USER_MESSAGE_NAME, LATEST_USER_MESSAGE_NAME, getChatContext } from "../chat-context/store"
 import { formatToolError } from "../errors"
 
 /**
@@ -20,13 +20,13 @@ import { formatToolError } from "../errors"
 export function createReadAttachmentTool(ctl: ToolsProviderController): Tool {
   return tool({
     name: "read_attachment",
-    description: `Read the full text of one source listed by \`list_attachments\`. Use the name "${LATEST_USER_MESSAGE_NAME}" for the user's latest message, or a file's name for an attachment.`,
+    description: `Read the full text of one source listed by \`list_attachments\`. Use the name "${LATEST_USER_MESSAGE_NAME}" for the user's latest message, "${FIRST_USER_MESSAGE_NAME}" for the user's first message, or a file's name for an attachment.`,
     parameters: {
       name: z
         .string()
         .min(1)
         .describe(
-          `Name of the source to read, as reported by \`list_attachments\`: "${LATEST_USER_MESSAGE_NAME}" for the user's latest message, or a file's name for an attachment.`
+          `Name of the source to read, as reported by \`list_attachments\`: "${LATEST_USER_MESSAGE_NAME}" for the user's latest message, "${FIRST_USER_MESSAGE_NAME}" for the user's first message, or a file's name for an attachment.`
         ),
     },
 
@@ -47,6 +47,10 @@ export function createReadAttachmentTool(ctl: ToolsProviderController): Tool {
 
         if (arguments_.name === LATEST_USER_MESSAGE_NAME) {
           return { content: chatContext.messageText }
+        }
+
+        if (arguments_.name === FIRST_USER_MESSAGE_NAME) {
+          return { content: chatContext.firstMessageText }
         }
 
         const file = chatContext.files.find(candidate => candidate.name === arguments_.name)

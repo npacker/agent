@@ -4,7 +4,12 @@
 
 import { tool, type Tool, type ToolsProviderController } from "@lmstudio/sdk"
 
-import { LATEST_USER_MESSAGE_NAME, getChatContext, listAttachments } from "../chat-context/store"
+import {
+  FIRST_USER_MESSAGE_NAME,
+  LATEST_USER_MESSAGE_NAME,
+  getChatContext,
+  listAttachments,
+} from "../chat-context/store"
 
 /**
  * Build the `list_attachments` tool: list the chat's readable sources (the user's latest message
@@ -17,7 +22,7 @@ import { LATEST_USER_MESSAGE_NAME, getChatContext, listAttachments } from "../ch
 export function createListAttachmentsTool(ctl: ToolsProviderController): Tool {
   return tool({
     name: "list_attachments",
-    description: `List the source material available from the current chat: the user's latest message (named "${LATEST_USER_MESSAGE_NAME}") and any files they attached. Pass a name to \`read_attachment\` to read one.`,
+    description: `List the source material available from the current chat: the user's latest message (named "${LATEST_USER_MESSAGE_NAME}"), the user's first message (named "${FIRST_USER_MESSAGE_NAME}", shown only when it differs from the latest), and any files they attached. Pass a name to \`read_attachment\` to read one.`,
     parameters: {},
 
     /**

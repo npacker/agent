@@ -1,13 +1,33 @@
 /**
- * Prompt preprocessor that records each chat's latest user message text and attached files so the
- * sub-agent can read them on demand through the `list_attachments` / `read_attachment` internal
- * tools. Runs before the host model generates and returns the user message unchanged.
+ * Prompt preprocessor that records each chat's latest user message text, first user message text,
+ * and attached files so the sub-agent can read them on demand through the `list_attachments` /
+ * `read_attachment` internal tools. Runs before the host model generates and returns the user
+ * message unchanged.
  */
 
 import { setChatContext } from "../chat-context/store"
 import { configSchematics } from "../config/config-schematics"
 
-import type { FileHandle, PromptPreprocessor } from "@lmstudio/sdk"
+import type { Chat, ChatMessage, FileHandle, PromptPreprocessor } from "@lmstudio/sdk"
+
+/**
+ * Find the text of the conversation's first user message. Returns the earliest user message in
+ * history, falling back to the message currently being preprocessed when history holds none — on
+ * the opening turn `pullHistory` excludes the current message, so it is itself the first.
+ *
+ * @param history - Conversation history, excluding the message being preprocessed.
+ * @param userMessage - The user message about to be sent to the model.
+ * @returns The first user message text, verbatim.
+ */
+function firstUserMessageText(history: Chat, userMessage: ChatMessage): string {
+  for (const message of history.getMessagesArray()) {
+    if (message.getRole() === "user") {
+      return message.getText()
+    }
+  }
+
+  return userMessage.getText()
+}
 
 /**
  * De-duplicate file handles by their identifier, preserving first-seen order.
@@ -47,7 +67,11 @@ export const chatContextPreprocessor: PromptPreprocessor = async (ctl, userMessa
     file => !file.isImage()
   )
 
-  setChatContext(ctl.getWorkingDirectory(), { messageText: userMessage.getText(), files })
+  setChatContext(ctl.getWorkingDirectory(), {
+    messageText: userMessage.getText(),
+    firstMessageText: firstUserMessageText(history, userMessage),
+    files,
+  })
 
   return userMessage
 }
