@@ -2,7 +2,7 @@
 
 An LM Studio plugin that gives a local LLM the ability to spawn a sub-agent to handle a self-contained task. The host model calls the **Run Agent** tool with a task description; the plugin runs the task on a configured sub-agent model and returns the final answer back to the host.
 
-The sub-agent runs with a fresh context window seeded only by the caller-supplied `systemPrompt` and `task`. It does not see the host chat's history. The sub-agent may invoke tools sourced from other LM Studio plugins, but the set of available tools is fixed by the operator's plugin configuration — the host model cannot widen the sub-agent's tool scope.
+The sub-agent runs with a fresh context window seeded only by the caller-supplied `systemPrompt` and `task`. It does not see the host chat's history. When the operator enables them, the sub-agent may invoke the plugin's internal tools (filesystem and chat-context tools); the set of available tools is fixed by the operator's plugin configuration — the host model cannot widen the sub-agent's tool scope.
 
 ## Tools
 
@@ -17,7 +17,7 @@ Delegate a single, well-scoped task to a sub-agent LLM and return its final answ
 
 Returns the sub-agent's final assistant message as a plain string. On failure returns an `"Error: …"` string the host model can read.
 
-If any [tool sources](#configuration) are configured, the sub-agent has access to those plugins' tools and resolves the task across multiple [`model.act`](https://lmstudio.ai/docs) prediction rounds, capped by **Max Prediction Rounds**. With no tool sources configured, the run typically completes in a single round.
+When the sub-agent has tools available (the plugin's internal tools, when enabled), it resolves the task across multiple [`model.act`](https://lmstudio.ai/docs) prediction rounds, capped by **Max Prediction Rounds**. With no tools available, the run typically completes in a single round.
 
 ## Installation
 
@@ -29,7 +29,7 @@ Install via the [LM Studio CLI](https://lmstudio.ai/docs/cli):
 lms get npacker/agent
 ```
 
-Or browse to the plugin on the [LM Studio Hub](https://lmstudio.ai/npacker/agent) and click "Run in LM Studio." Once enabled, the **Run Agent** tool becomes available to any model that supports tool calls. Configure a sub-agent model and (optionally) cross-plugin tool sources in the plugin UI before invoking it.
+Or browse to the plugin on the [LM Studio Hub](https://lmstudio.ai/npacker/agent) and click "Run in LM Studio." Once enabled, the **Run Agent** tool becomes available to any model that supports tool calls. Configure a sub-agent model in the plugin UI before invoking it.
 
 ## Configuration
 
@@ -39,22 +39,13 @@ Configured in the LM Studio plugin UI.
 | --------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Agent Model Key       | `auto`  | Model key of the LLM used as the sub-agent (as listed by `lms ls`). `auto` routes through `client.llm.model()` with no argument, picking any model already loaded in LM Studio.       |
 | Max Prediction Rounds | `8`     | 1–40. Upper bound passed through as `maxPredictionRounds`. Caps the SDK's tool-call/response round loop.                                                                              |
-| Tool Source Plugins   | `[]`    | Plugin identifiers (`owner/name`, one per entry, as shown in `lms ls --plugins` or on the LM Studio Hub) whose tools the sub-agent may call. Empty list disables cross-plugin tools. Failures to open a source are logged and skipped; the run still starts. Each source must also have LM Studio's `plugins.use` permission granted to this plugin — see [Cross-plugin permissions](#cross-plugin-permissions). |
-| Allowed Tools         | `[]`    | Exact tool names the sub-agent may call — case-sensitive, matched verbatim against the name the source plugin registers (the value passed to `tool({ name: ... })`, not a display label; e.g. `Web Search`, not `web_search`). Whitespace is trimmed. Empty list allows every tool from a configured source. If any entry fails to match, the run is aborted before the sub-agent is invoked and the error lists the available names (with did-you-mean suggestions). Run `lms log stream` after the plugin loads to see the exact names discovered from each source. |
+| Allowed Tools         | `[]`    | Exact tool names the sub-agent may call — case-sensitive, matched verbatim against the registered tool name (the value passed to `tool({ name: ... })`, not a display label). Whitespace is trimmed. Empty list allows every internal tool (when **Enable Internal Tools** is on). If any entry fails to match, the run is aborted before the sub-agent is invoked and the error lists the available names (with did-you-mean suggestions). |
 | Temperature           | `0.7`   | 0–2. Sampling temperature applied to the sub-agent's predictions.                                                                                                                     |
 | Run Timeout (seconds) | `300`   | 30–1800. Hard wall-clock cap on a single run. Composed with the SDK-supplied abort signal via `AbortSignal.any`; a timeout abort is reported as `AgentTimeoutError`.                  |
 
-The two tool-scoping fields (**Tool Source Plugins** and **Allowed Tools**) are the only way to grant tool access to the sub-agent. The host LLM has no parameter to override or extend them.
+The **Allowed Tools** field (together with **Enable Internal Tools**) is the only way to scope the sub-agent's tool access. The host LLM has no parameter to override or extend it.
 
-### Cross-plugin permissions
-
-LM Studio gates cross-plugin tool sessions behind a `plugins.use` permission that is not declared in `manifest.json` — the host runtime must grant it out-of-band. If you see a "Permission denied opening tool source" warning at run time (or an entry like the following in `lms log stream`), the agent plugin has not been granted permission to use the listed source:
-
-```
-Permission denied. The client "plugin:installed:npacker/agent" does not have the required permission: [{"type":"plugins.use","pluginIdentifier":"<owner>/<name>"}].
-```
-
-Grant it by accepting the permission prompt LM Studio shows when the agent plugin first tries to open the source, or from the Plugins settings panel inside LM Studio. After granting, reload the agent plugin (or restart LM Studio) so the bridge re-opens its sessions.
+> Cross-plugin tool sourcing (exposing other LM Studio plugins' tools to the sub-agent) is present in the codebase but not currently wired, so there is no tool-source setting in the UI.
 
 ## Local development
 

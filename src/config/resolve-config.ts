@@ -20,9 +20,7 @@ export interface ResolvedConfig {
   modelKey: string | undefined
   /** Upper bound on the number of `.act` prediction rounds the run may take. */
   maxRounds: number
-  /** Plugin identifiers whose tools the sub-agent may call. Empty disables cross-plugin tools. */
-  toolSources: string[]
-  /** Exact tool names the sub-agent may call. Empty allows all tools from configured sources. */
+  /** Exact tool names the sub-agent may call. Empty allows every internal tool. */
   allowedTools: string[]
   /** When `true`, expose the plugin-internal filesystem tools (list_files, read_file, grep) to the sub-agent. */
   enableInternalTools: boolean
@@ -46,7 +44,6 @@ export function resolveConfig(ctl: ToolsProviderController): ResolvedConfig {
   return {
     modelKey: resolveModelKey(pluginConfig.get("modelKey")),
     maxRounds: pluginConfig.get("maxRounds"),
-    toolSources: pluginConfig.get("toolSources"),
     allowedTools: pluginConfig.get("allowedTools"),
     enableInternalTools: pluginConfig.get("enableInternalTools"),
     maxRetries: pluginConfig.get("maxRetries"),

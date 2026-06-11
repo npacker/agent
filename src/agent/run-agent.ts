@@ -20,7 +20,7 @@ export interface RunAgentOptions {
   systemPrompt: string
   /** Task description appended as the user message. */
   task: string
-  /** Cross-plugin tools (already filtered) the sub-agent may call. */
+  /** Tools (already filtered) the sub-agent may call. */
   externalTools: Tool[]
   /** Tool names the sub-agent must call at least once across the run. May be empty. */
   requiredTools: readonly string[]

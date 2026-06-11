@@ -12,11 +12,12 @@ import { formatToolError, UnknownAllowedToolsError, UnknownRequiredToolsError } 
 import type { ToolBridge } from "../plugin-tools"
 
 /**
- * Build the Run Agent tool: delegates a task to a sub-agent model with the cross-plugin tools
- * exposed by the bridge.
+ * Build the Run Agent tool: delegates a task to a sub-agent model with the tools exposed by the
+ * bridge (currently the plugin-internal tools only; cross-plugin sourcing is unwired).
  *
  * @param ctl - Tools provider controller supplied by the LM Studio SDK.
- * @param bridge - Long-lived bridge exposing cross-plugin tools to the sub-agent.
+ * @param bridge - Long-lived bridge exposing the sub-agent's tools (internal tools; cross-plugin
+ * sourcing currently unwired).
  * @returns The configured Run Agent tool.
  */
 export function createRunAgentTool(ctl: ToolsProviderController, bridge: ToolBridge): Tool {

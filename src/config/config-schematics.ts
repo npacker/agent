@@ -36,22 +36,12 @@ export const configSchematics = createConfigSchematics()
     8
   )
   .field(
-    "toolSources",
-    "stringArray",
-    {
-      displayName: "Tool Source Plugins",
-      subtitle: "Plugin identifiers in 'owner/name' form, one per entry. Empty list disables cross-plugin tools.",
-      allowEmptyStrings: false,
-    },
-    []
-  )
-  .field(
     "allowedTools",
     "stringArray",
     {
       displayName: "Allowed Tools",
       subtitle:
-        "Exact tool names the sub-agent may call, one per entry (case-sensitive). Empty list allows every tool from a configured source, plus every internal tool when Enable Internal Tools is on.",
+        "Exact tool names the sub-agent may call, one per entry (case-sensitive). Empty list allows every internal tool when Enable Internal Tools is on.",
       allowEmptyStrings: false,
     },
     []

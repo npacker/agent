@@ -1,9 +1,10 @@
 /**
  * Registers the plugin's tools with the LM Studio SDK.
  *
- * Opens cross-plugin tool sessions and replaces them on each `toolsProvider` invocation,
- * serialising registrations so concurrent calls cannot leak bridges, and disposing the active
- * bridge cleanly on process shutdown signals.
+ * Cross-plugin tool sourcing is currently unwired, so the bridge opens no `pluginTools()`
+ * sessions and carries only the plugin-internal tools. The bridge is still replaced on each
+ * `toolsProvider` invocation, registrations are serialised so concurrent calls cannot leak
+ * bridges, and the active bridge is disposed cleanly on process shutdown signals.
  */
 
 import { resolveConfig } from "./config/resolve-config"
@@ -65,7 +66,11 @@ export async function toolsProvider(ctl: ToolsProviderController): Promise<Tool[
 async function doRegister(ctl: ToolsProviderController): Promise<Tool[]> {
   const config = resolveConfig(ctl)
   const internalTools = config.enableInternalTools ? buildInternalTools(ctl) : []
-  const newBridge = await ToolBridge.open(ctl.client, config.toolSources, internalTools)
+  // Cross-plugin tool sourcing is unwired: no `toolSources` are read and no `pluginTools()`
+  // sessions are opened, so the bridge carries only the internal tools. The ToolBridge machinery
+  // is retained intact — re-hooking cross-plugin sourcing is a matter of passing the configured
+  // source identifiers here again.
+  const newBridge = await ToolBridge.open(ctl.client, [], internalTools)
   const previousBridge = activeBridge
 
   activeBridge = newBridge
