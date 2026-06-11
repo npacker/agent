@@ -20,8 +20,7 @@ import { grep, resolveSandboxedPath } from "../fs"
 export function createGrepTool(ctl: ToolsProviderController): Tool {
   return tool({
     name: "grep",
-    description:
-      'Search files inside the working directory for lines matching a JavaScript regular expression. Returns a JSON object: `{ matches: [{ path, lineNumber, line }], filesSearched, matchCount }`. Hidden entries are always skipped. The matches array is capped at 200; `matchCount` reflects the true total. On failure, returns `{ error: "Search failed: …" }`.',
+    description: "Search files inside the working directory for lines matching a JavaScript regular expression.",
     parameters: {
       pattern: z.string().min(1).describe("Regular-expression source (JavaScript flavour). Required."),
       path: z

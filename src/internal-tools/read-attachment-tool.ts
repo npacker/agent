@@ -20,7 +20,7 @@ import { formatToolError } from "../errors"
 export function createReadAttachmentTool(ctl: ToolsProviderController): Tool {
   return tool({
     name: "read_attachment",
-    description: `Read the full text of one source listed by \`list_attachments\`. Use the name "${LATEST_USER_MESSAGE_NAME}" for the user's latest message, "${FIRST_USER_MESSAGE_NAME}" for the user's first message, or a file's name for an attachment.`,
+    description: `Read the full text of one source listed by \`list_attachments\`. Use this tool to get the full task context from a file attachment or from a user message.`,
     parameters: {
       name: z
         .string()

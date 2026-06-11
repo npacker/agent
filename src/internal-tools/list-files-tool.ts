@@ -19,8 +19,7 @@ import { listDirectory, resolveSandboxedPath } from "../fs"
 export function createListFilesTool(ctl: ToolsProviderController): Tool {
   return tool({
     name: "list_files",
-    description:
-      'List files and directories inside the working directory. Returns a JSON object: `{ entries: string[], total: number }`. Paths in `entries` are relative to the requested directory and directories carry a trailing "/". Hidden entries (names starting with ".") are excluded by default. `entries` is capped at 1000; `total` is the full count. On failure, returns `{ error: "List failed: …" }`.',
+    description: "List files and directories inside the current working directory.",
     parameters: {
       path: z
         .string()

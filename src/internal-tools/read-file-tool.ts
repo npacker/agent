@@ -20,7 +20,7 @@ import { readFile, resolveSandboxedPath } from "../fs"
 export function createReadFileTool(ctl: ToolsProviderController): Tool {
   return tool({
     name: "read_file",
-    description: `Read a text file inside the working directory. Returns a JSON object: \`{ content: string }\` holding the file's full text. Binary files and files over 5 MB are refused. On failure, returns \`{ error: "Read failed: …" }\`.`,
+    description: "Read a text file inside the current working directory.",
     parameters: {
       path: z
         .string()

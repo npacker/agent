@@ -22,7 +22,7 @@ import {
 export function createListAttachmentsTool(ctl: ToolsProviderController): Tool {
   return tool({
     name: "list_attachments",
-    description: `List the source material available from the current chat: the user's latest message (named "${LATEST_USER_MESSAGE_NAME}"), the user's first message (named "${FIRST_USER_MESSAGE_NAME}", shown only when it differs from the latest), and any files they attached. Pass a name to \`read_attachment\` to read one.`,
+    description: `List the source context available from the current chat: the user's latest message (named "${LATEST_USER_MESSAGE_NAME}"), the user's first message (named "${FIRST_USER_MESSAGE_NAME}"), and any files attached to the chat. Pass a name to \`read_attachment\` to read the file contents.`,
     parameters: {},
 
     /**
